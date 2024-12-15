@@ -20,3 +20,11 @@ class LLMConfig:
             else:
                 raise ValueError("API key is not valid")
         return LLMConfig(**d)
+
+    def is_openai_model(self):
+        return "openai" in self.model_name
+
+    def get_openai_model_name(self):
+        if not self.is_openai_model():
+            raise ValueError("Model is not openai")
+        return self.model_name.split("/")[-1]

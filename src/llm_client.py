@@ -1,18 +1,40 @@
 from typing import List, Dict
 
 import time
-from openai import OpenAI, OpenAIError
+import numpy as np
+from openai import OpenAI, OpenAIError, ChatCompletion
 from loguru import logger
+import traceback
 
 from src.schema.llm_config import LLMConfig
 
 
-class LLMClient:
+class TokenCounterMixin:
+    def __init__(self):
+        self.input_tokens = []
+        self.total_tokens = []
+
+    def update_tokens(self, response: ChatCompletion):
+        self.input_tokens.append(response.usage.prompt_tokens)
+        self.total_tokens.append(response.usage.completion_tokens)
+
+    def get_total_tokens(self):
+        return np.array(self.total_tokens)
+
+    def get_input_tokens(self):
+        return np.array(self.input_tokens)
+
+    def get_output_tokens(self):
+        return np.array(self.total_tokens) - np.array(self.input_tokens)
+
+
+class LLMClient(TokenCounterMixin):
     def __init__(self, config: LLMConfig):
+        super().__init__()
         self.client = OpenAI(api_key=config.api_key, base_url=config.base_url)
         self.config = config
 
-    def chat(self, messages, max_tokens=None, retries=3, backoff_factor=0.3):
+    def chat(self, messages: List[Dict[str, str]], max_tokens=None, retries=3, backoff_factor=0.3):
         if not max_tokens:
             max_tokens = self.config.max_tokens
 
@@ -25,10 +47,11 @@ class LLMClient:
                     temperature=self.config.temperature,
                     top_p=self.config.top_p,
                 )
+                self.update_tokens(response)
                 return response.choices[0]
 
-            except Exception as e:
-                logger.error(f"Request failed with error {e}. Trying again.")
+            except Exception:
+                logger.error(f"Request failed with error.\n{traceback.format_exc()}")
                 wait_time = backoff_factor * (2 ** i)
                 time.sleep(wait_time)
 
