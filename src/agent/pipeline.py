@@ -47,10 +47,13 @@ class Pipeline(PipelineGraphMixin):
         self.context = None
         self.output_agent_id = None
 
-    def _from_config(self, config):
-        for agent_config in config:
-            agent = AgentFactory.get_agent(agent_config, {"llm_client": self.llm_client})
+    def _from_config(self, config: PipelineAgentConfig):
+        for agent_config_dct in config.agent_configs:
+            agent = AgentFactory.get_agent(agent_config_dct, {"llm_client": self.llm_client})
             self.agents[agent.config.agent_id] = agent
+
+        self.validate_order(agents, self.config.edges)
+        
         for edge in config.edges:
             source_agent = self.agents[edge[0]]
             target_agent = self.agents[edge[1]]

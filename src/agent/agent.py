@@ -36,7 +36,7 @@ class IOAgent(Agent):
     def _format_messages(self, context: AgentContext) -> List[Dict[str, str]]:
         formated_messages = []
         for message in self.messages:
-            formated_messages.append({"role": message["role"], "content": message["content"].format(context.input)})
+            formated_messages.append({"role": message["role"], "content": message["content"].format(context.data)})
         return formated_messages
 
     def handle(self, context: AgentContext) -> AgentContext:

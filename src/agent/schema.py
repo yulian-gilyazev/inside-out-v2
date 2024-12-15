@@ -22,7 +22,7 @@ class IOAgentConfig(AgentConfig):
 
 @dataclass
 class PipelineAgentConfig(ABC):
-    agents: Dict[str, IOAgentConfig]
+    agent_configs: Dict[str, Dict[str, Any]]
     edges: List[List[str, str]]
     input_id: str
     output_id: str
