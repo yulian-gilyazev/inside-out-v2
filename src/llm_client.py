@@ -12,20 +12,20 @@ from src.schema.llm_config import LLMConfig
 class TokenCounterMixin:
     def __init__(self):
         self.input_tokens = []
-        self.total_tokens = []
+        self.output_tokens = []
 
     def update_tokens(self, response: ChatCompletion):
         self.input_tokens.append(response.usage.prompt_tokens)
-        self.total_tokens.append(response.usage.completion_tokens)
+        self.output_tokens.append(response.usage.completion_tokens)
 
     def get_total_tokens(self):
-        return np.array(self.total_tokens)
+        return np.array(self.input_tokens) + np.array(self.output_tokens)
 
     def get_input_tokens(self):
         return np.array(self.input_tokens)
 
     def get_output_tokens(self):
-        return np.array(self.total_tokens) - np.array(self.input_tokens)
+        return np.array(self.output_tokens)
 
 
 class LLMClient(TokenCounterMixin):

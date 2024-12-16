@@ -16,6 +16,8 @@ class PipelineGraphMixin:
         sorted_nodes = list(topological_sort(graph))
         for agent_id, agent in agents.items():
             neighbors = [neighbor.config.agent_id for neighbor in agent.next_agents]
+            if not neighbors:
+                continue
             if sorted_nodes.index(agent_id) > max(sorted_nodes.index(neighbor_id) for neighbor_id in neighbors):
                 raise Exception(f"Agent {agent_id} has next agents that are not in topological order.")
 
@@ -47,25 +49,32 @@ class Pipeline(PipelineGraphMixin):
         self.context = None
         self.output_agent_id = None
 
-    def _from_config(self, config: PipelineAgentConfig):
-        for agent_config_dct in config.agent_configs:
+        self._from_config()
+
+    def _from_config(self):
+        for agent_config_dct in self.config.agent_configs:
             agent = AgentFactory.get_agent(agent_config_dct, {"llm_client": self.llm_client})
             self.agents[agent.config.agent_id] = agent
 
-        self.validate_order(agents, self.config.edges)
+        self.validate_order(self.agents, self.config.edges)
         
-        for edge in config.edges:
+        for edge in self.config.edges:
             source_agent = self.agents[edge[0]]
             target_agent = self.agents[edge[1]]
-            source_agent.add_next(target_agent)
-            target_agent.add_previous(source_agent)
+            source_agent.add_next_agent(edge[1])
+            target_agent.add_previous_agent(edge[0])
 
     def get_output(self):
-        return self.context[output_agent_id]
+        return self.context.get_value(output_agent_id)
 
-    def process(self, input_text: str) -> AgentContext:
-        self.context = AgentContext(input_text={"input": input_text})
-        self.agents[0].process(self.context)
+    def process(self, context: AgentContext) -> AgentContext:
+        queue = [self.config.input_id]
+        while queue:
+            context, next_agents = self.agents[queue[0]].process(context)
+            queue.pop(0)
+            for agent in next_agents:
+                if agent not in queue:
+                    queue.append(agent)
         return context
 
 

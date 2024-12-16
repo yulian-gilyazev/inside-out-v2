@@ -1,12 +1,15 @@
 from typing import List, Dict, Optional, Callable, Any
 
+from dataclasses import dataclass
 from abc import ABC
 
 
 @dataclass
 class AgentContext(ABC):
     data: Dict[str, str]
-    metadata: Dict[str, Any] = None
+
+    def get_value(self, name: str) -> str:
+        return self.data.get(name, None)
 
 
 @dataclass
@@ -23,6 +26,6 @@ class IOAgentConfig(AgentConfig):
 @dataclass
 class PipelineAgentConfig(ABC):
     agent_configs: Dict[str, Dict[str, Any]]
-    edges: List[List[str, str]]
+    edges: List[List[str]]
     input_id: str
     output_id: str
