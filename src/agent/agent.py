@@ -44,11 +44,20 @@ class IOAgent(Agent):
         return context
 
 
+class EchoAgent(Agent):
+    def __init__(self, config: IOAgentConfig):
+        super().__init__(config)
+
+    def handle(self, context: AgentContext) -> AgentContext:
+        return context
+
+
 class AgentFactory(ABC):
     @staticmethod
     def get_agent(agent_config_dct: dict, kwargs: dict = None) -> Agent:
         classes: dict[Hashable, (Callable[..., object], Callable[..., object])] = {
             "IO": (IOAgent, IOAgentConfig),
+            "Echo": (EchoAgent, AgentConfig),
         }
         classes_ = classes.get(agent_config_dct["agent_type"], None)
         if classes_ is None:
