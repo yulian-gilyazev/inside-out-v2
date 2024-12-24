@@ -60,8 +60,6 @@ ipython_config.py
 # pyenv
 .python-version
 
-env/
-
 # Environment
 .env
 
@@ -101,3 +99,5 @@ notebooks/play.ipynb
 notebooks/Untitled.ipynb
 notebooks/play-Copy1.ipynb
 
+
+env/
