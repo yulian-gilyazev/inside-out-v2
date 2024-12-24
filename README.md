@@ -8,8 +8,8 @@ python3 -m venv env
 source env/bin/activate
 pip install poetry
 pip install -r requirements.txt
-cd libs/GPTSwarm
-poetry install
+cd libs/GPTSwarm && poetry install
+python3 -m pip install --pre torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/nightly/cpu
 ```
 
 ## Dataset Generation Example
