@@ -130,7 +130,7 @@ registry.add_config(
             },
         ],
         edges=[],
-        input_id="input", 
+        input_id="erc", 
         output_id="erc",
     )
 )
