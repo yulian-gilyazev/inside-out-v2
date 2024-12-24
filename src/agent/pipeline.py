@@ -65,7 +65,7 @@ class Pipeline(PipelineGraphMixin):
             target_agent.add_previous_agent(edge[0])
 
     def get_output(self):
-        return self.context.get_value(output_agent_id)
+        return self.context.get_value(self.output_agent_id)
 
     def process(self, context: AgentContext) -> AgentContext:
         queue = [self.config.input_id]

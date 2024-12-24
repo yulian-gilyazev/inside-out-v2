@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from .schema import AgentConfig, IOAgentConfig, AgentContext
 from src.llm_client import LLMClient
-from typing import List, Dict, Optional, Callable, Any
+from typing import List, Dict, Optional, Callable, Any, Hashable
 from abc import ABC, abstractmethod
 
 
@@ -61,7 +61,7 @@ class AgentFactory(ABC):
         }
         classes_ = classes.get(agent_config_dct["agent_type"], None)
         if classes_ is None:
-            raise ValueError(f"Agent type {agent_type} not supported")
+            raise ValueError(f"Agent type {agent_config_dct['agent_type']} not supported")
 
         agent_class, agent_config_class = classes_
         agent_kwargs = {}
