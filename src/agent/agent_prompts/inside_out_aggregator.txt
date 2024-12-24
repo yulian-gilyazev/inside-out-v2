@@ -5,5 +5,5 @@ Your answer should consist of an emotion and an assessment of the level of confi
 To select emotions, use Ekman's classification into 5 main emotions - Anger, Disgust, Fear, Happiness, Sadness.
 Separate the emotion and the response using a semicolon.
 Response example:
-`Anxious; 0.7`
+`Anger; 0.7`
 The same format is followed for agent responses.

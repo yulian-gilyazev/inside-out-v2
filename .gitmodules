@@ -1,0 +1,3 @@
+[submodule "libs/GPTSwarm"]
+	path = libs/GPTSwarm
+	url = git@github.com:metauto-ai/GPTSwarm.git

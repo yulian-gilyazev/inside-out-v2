@@ -25,14 +25,13 @@ registry = PipelineAgentConfigRegistry()
 system_prompt = load_prompt("agent_prompts/system_prompt.txt")
 
 registry.add_config(
-    "inside-out",
+    "inside-out-erc",
     PipelineAgentConfig(
         agent_configs=[
             {
                 "agent_type": "Echo",
                 "agent_id": "input",
             },
-
             {
                 "agent_type": "IO",
                 "agent_id": "anger_agent",
@@ -107,4 +106,30 @@ registry.add_config(
                ("fear_agent", "aggregator"), ("happiness_agent", "aggregator"), ("sadness_agent", "aggregator")],
         input_id="input",
         output_id="aggregator",
-    ))
+    )
+)
+
+registry.add_config(
+    "baseline-erc",
+    PipelineAgentConfig(
+        agent_configs=[
+            {
+                "agent_type": "IO",
+                "agent_id": "erc",
+                "messages": [
+                    {
+                        "role": "system",
+                        "content": system_prompt + "\n" + load_prompt("agent_prompts/baseline_erc.txt")
+                    },
+                    {
+                        "role": "user",
+                        "content": "Dialogue:\n{input}."
+                    }
+                ]
+            },
+        ],
+        edges=[],
+        input_id="input", 
+        output_id="erc",
+    )
+)
