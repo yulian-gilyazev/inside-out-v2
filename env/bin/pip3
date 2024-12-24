@@ -1,4 +1,4 @@
-#!/home/jupyter-gilyazev.yulian@wb-45e0d/inside-out-v2/env/bin/python3
+#!/Users/yulian/ysda/inside-out-v2/env/bin/python3.12
 # -*- coding: utf-8 -*-
 import re
 import sys
