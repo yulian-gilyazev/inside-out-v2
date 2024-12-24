@@ -1,4 +1,5 @@
 import os
+from typing import Dict
 
 from .schema import PipelineAgentConfig
 
