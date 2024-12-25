@@ -13,6 +13,7 @@ python3 -m src.scripts.experiments.run_inside_out_agent --agent_name 'baseline-e
     --out_path 'data/baseline_erc_results.json'
 """
 
+
 def parse_arguments():
     parser = argparse.ArgumentParser()
     parser.add_argument('--agent_name', type=str, help='Name of agent')
@@ -43,7 +44,7 @@ def main():
                                     args.non_empathetic_dialogues_path],
                                    [1, 0], args.scenarios_path)
     result = []
-    for idx in tqdm(range(len(dset))):
+    for idx in tqdm(range(200)):
         item, empathy_label = dset[idx]
 
         context = AgentContext(data={"input": item.format_dialogue()})

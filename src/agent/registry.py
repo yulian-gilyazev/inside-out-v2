@@ -110,6 +110,7 @@ registry.add_config(
     )
 )
 
+
 registry.add_config(
     "baseline-erc",
     PipelineAgentConfig(
@@ -130,7 +131,80 @@ registry.add_config(
             },
         ],
         edges=[],
-        input_id="erc", 
+        input_id="erc",
         output_id="erc",
+    )
+)
+
+
+registry.add_config(
+    "self-consistency-erc",
+    PipelineAgentConfig(
+        agent_configs=[
+            {
+                "agent_type": "Echo",
+                "agent_id": "input",
+            },
+            {
+                "agent_type": "IO",
+                "agent_id": "first",
+                "messages": [
+                    {
+                        "role": "system",
+                        "content": system_prompt + "\n" + load_prompt("agent_prompts/baseline_erc.txt")
+                    },
+                    {
+                        "role": "user",
+                        "content": "Dialogue:\n{input}."
+                    }
+                ]
+            },
+            {
+                "agent_type": "IO",
+                "agent_id": "second",
+                "messages": [
+                    {
+                        "role": "system",
+                        "content": system_prompt + "\n" + load_prompt("agent_prompts/baseline_erc.txt")
+                    },
+                    {
+                        "role": "user",
+                        "content": "Dialogue:\n{input}."
+                    }
+                ]
+            },
+            {
+                "agent_type": "IO",
+                "agent_id": "third",
+                "messages": [
+                    {
+                        "role": "system",
+                        "content": system_prompt + "\n" + load_prompt("agent_prompts/baseline_erc.txt")
+                    },
+                    {
+                        "role": "user",
+                        "content": "Dialogue:\n{input}."
+                    }
+                ]
+            },
+            {
+                "agent_type": "IO",
+                "agent_id": "aggregator",
+                "messages": [
+                    {
+                        "role": "system",
+                        "content": system_prompt + "\n" + load_prompt("agent_prompts/inside_out_aggregator.txt")
+                    },
+                    {
+                        "role": "user",
+                        "content": "Dialogue:\n{input}\nAgent responses:\n* {first}\n* {second}\n* {third}\n"
+                    }
+                ]
+            },
+        ],
+        edges=[("input", "first"), ("input", "second"), ("input", "third"),
+               ("first", "aggregator"), ("second", "aggregator"), ("third", "aggregator")],
+        input_id="input",
+        output_id="aggregator",
     )
 )

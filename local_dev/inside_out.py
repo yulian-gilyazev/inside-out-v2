@@ -13,7 +13,7 @@ def main():
     llm_config = LLMConfig.from_dict(config_dct)
     llm_client = LLMClient(llm_config)
 
-    inside_out_pipeline_config = registry.get_config("inside-out")
+    inside_out_pipeline_config = registry.get_config("self-consistency-erc")
 
     pipeline = Pipeline(inside_out_pipeline_config, llm_client)
     dset = SyntheticEmotionDataset(["data/synthetic_dialogues/empathetic_dialogues.json",

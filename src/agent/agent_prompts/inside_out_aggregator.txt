@@ -1,4 +1,4 @@
-You have been given answers by 5 emotional agents, each of whom was interviewed to assess the emotional state of the first (A) interlocutor in the dialogue.
+You have been given answers by several emotional agents, each of whom was interviewed to assess the emotional state of the first (A) interlocutor in the dialogue.
 You are also given the dialogue itself.
 Your task is to aggregate the responses of these agents and give your own based on the dialogue and the responses of the agents.
 Your answer should consist of an emotion and an assessment of the level of confidence in it in the range from 0 to 1.
