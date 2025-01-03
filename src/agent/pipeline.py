@@ -1,8 +1,8 @@
 import networkx as nx
 import matplotlib.pyplot as plt
 from networkx import DiGraph, topological_sort
-from typing import List, Dict
-from .agent import Agent, AgentFactory
+from typing import List
+from .agent import AgentFactory
 from .schema import AgentContext, PipelineAgentConfig
 from src.llm_client import LLMClient
 
@@ -76,5 +76,3 @@ class Pipeline(PipelineGraphMixin):
                 if agent not in queue:
                     queue.append(agent)
         return context
-
-

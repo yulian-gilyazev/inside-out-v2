@@ -1,7 +1,6 @@
-from dataclasses import dataclass
 from .schema import AgentConfig, IOAgentConfig, AgentContext
 from src.llm_client import LLMClient
-from typing import List, Dict, Optional, Callable, Any, Hashable
+from typing import List, Dict, Callable, Hashable
 from abc import ABC, abstractmethod
 
 
