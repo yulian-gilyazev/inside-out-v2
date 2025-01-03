@@ -17,6 +17,8 @@ class LLMConfig:
         if "api_key" not in d:
             if d["base_url"] == "https://api.vsegpt.ru/v1":
                 d["api_key"] = VSEGPT_API_KEY
+            elif d["base_url"] == "https://api.openai.com/v1":
+                d["api_key"] = OPENAI_API_KEY
             else:
                 raise ValueError("API key is not valid")
         return LLMConfig(**d)
