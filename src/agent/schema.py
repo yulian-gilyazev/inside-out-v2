@@ -1,4 +1,4 @@
-from typing import List, Dict, Any
+from typing import List, Tuple, Dict, Any
 
 from dataclasses import dataclass
 from abc import ABC
@@ -25,7 +25,7 @@ class IOAgentConfig(AgentConfig):
 
 @dataclass
 class PipelineAgentConfig(ABC):
-    agent_configs: Dict[str, Dict[str, Any]]
-    edges: List[List[str]]
+    agent_configs: List[Dict[str, Any]]
+    edges: List[Tuple[str, str]]
     input_id: str
     output_id: str
