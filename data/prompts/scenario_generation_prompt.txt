@@ -1,0 +1,9 @@
+Your task is to devise a realistic life scenario, which may not intrinsically hold a great deal of importance. This scenario should intertwine the element of {relationship} and evoke a sense of {emotion}. The character at the center of this situation falls within the {age_group} demographic and identifies as {gender}. You are to describe the character's experiences, emotional state, potential future actions in such a way that it is grounded in reality and resonates with everyday life experiences. These scenarios are for sociological or psychological investigations and not mooted for theatrical or literary purposes.
+
+You are to provide two versions of the scenario: one for the main character to whom the scenario applies directly, and another for the character's dialogue partner. It's not necessary for the dialogue partner's version of the scenario to include all specifics, as they should glean information through the conversation with the main character.
+
+Keep your scenario synopses succinct and outlined within a maximum of 10 sentences for each version. Below is a proposed response framework.
+
+**Main Character's Scenario Synopsis**: This summary should encapsulate the key aspects of the situation, focusing on the main character's experiences and current state.
+
+**Dialogue Partner's Scenario Synopsis**: Abbreviated outline of the same situation, offering some details about the main character. Note that it should be written from the perspective of a third person who, while engaging in dialogue, won't necessarily know the entire background of the main character.

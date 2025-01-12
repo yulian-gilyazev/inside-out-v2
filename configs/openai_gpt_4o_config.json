@@ -1,0 +1,8 @@
+{
+  "base_url": "https://api.openai.com/v1",
+  "model_name": "gpt-4o",
+  "max_tokens": 600,
+  "temperature": 0.8,
+  "input_token_price": 0.0000025,
+  "output_token_price": 0.00001
+}
