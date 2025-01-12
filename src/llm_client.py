@@ -2,7 +2,7 @@ from typing import List, Dict
 
 import time
 import numpy as np
-from openai import OpenAI, OpenAIError, ChatCompletion
+from openai import OpenAI, ChatCompletion
 from loguru import logger
 import traceback
 
@@ -26,6 +26,11 @@ class TokenCounterMixin:
 
     def get_output_tokens(self):
         return np.array(self.output_tokens)
+
+    def get_generations_cost(self):
+        cost = (self.config.input_token_price * self.get_input_tokens().sum() +
+                self.config.output_token_price * self.get_output_tokens().sum())
+        return cost
 
 
 class LLMClient(TokenCounterMixin):
@@ -69,6 +74,30 @@ class DialogueManager:
         self.first_system_prompt = first_system_prompt
         self.second_system_prompt = second_system_prompt
 
+    def _prepare_history_for_llm_client(self, dialogue: List[Dict[str, str]]) -> List[Dict[str, str]]:
+        if len(dialogue) % 2 == 0:
+            history = [{"role": "system", "content": self.first_system_prompt}]
+            role = "assistant"
+        else:
+            history = [{"role": "assistant", "content": self.second_system_prompt}]
+            role = "user"
+        for i, item in enumerate(dialogue):
+            history.append({"role": role, "content": item["content"]})
+            role = "assistant" if role == "user" else "user"
+        return history
+
+    @staticmethod
+    def _llm_client_history_to_dialogue(history: List[Dict[str, str]], interlocutor_idx: int):
+        if interlocutor_idx > 1:
+            raise ValueError("Interlocutor idx should be 0 or 1.")
+        if interlocutor_idx == 0:
+            dialogue = [{"role": "first" if item["role"] == "assistant" else "second", "content": item["content"]}
+                        for item in history[1:]]
+        else:
+            dialogue = [{"role": "first" if item["role"] == "user" else "second", "content": item["content"]}
+                        for item in history[1:]]
+        return dialogue
+
     def communicate(self, n_rounds: int) -> List[Dict[str, str]]:
         history1 = [{"role": "system", "content": self.first_system_prompt}]
         history2 = [{"role": "system", "content": self.second_system_prompt}]
@@ -76,8 +105,17 @@ class DialogueManager:
             message = self.client1.chat(history1).message
             history1.append({"role": "assistant", "content": message.content})
             history2.append({"role": "user", "content": message.content})
-            message = self.client1.chat(history2).message
+            message = self.client2.chat(history2).message
             history2.append({"role": "assistant", "content": message.content})
             history1.append({"role": "user", "content": message.content})
-        dialogue = [{"role": "first" if item["role"] == "assistant" else "second", "content": item["content"]} for item in history1[1:]]
+        dialogue = self._llm_client_history_to_dialogue(history1, 0)
         return dialogue
+
+    def append_utterance(self, dialogue: List[Dict[str, str]]) -> str:
+        history = self._prepare_history_for_llm_client(dialogue)
+        if len(dialogue) % 2 == 0:
+            client = self.client1
+        else:
+            client = self.client2
+        message = client.chat(history).message
+        return message.content
