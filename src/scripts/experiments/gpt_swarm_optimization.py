@@ -150,7 +150,6 @@ def main():
         tensorboard_tag=tag,
     )
 
-
     task_template = ("You need to assess emotion of the first (A) interlocutor in the dialogue, estimate your confidence and give reasoning for your answer."
             "Your answer should consist of an emotion and an assessment of the level of confidence in it in the range from 0 to 1."
             "To select emotions, use Ekman's classification into 5 main emotions - Anger, Disgust, Fear, Happiness, Sadness."
