@@ -1,19 +1,26 @@
 import sys
 import os
+import asyncio
+from typing import Optional, List, Any
+from tqdm import tqdm
+import torch
+import time
+import numpy as np
+
+from src.utils.data import SyntheticEmotionDataset
+from src.utils.logger import Logger
+
 sys.path.append(os.path.join("libs", "GPTSwarm"))
 
 from swarm.graph import Node, Graph
-from swarm.graph.swarm import Swarm
-from typing import List, Any, Optional
 from swarm.environment.prompt.prompt_set_registry import PromptSetRegistry
 from swarm.llm.format import Message
 from swarm.llm import LLMRegistry
 from swarm.environment.operations.cot_step import CoTStep
 from swarm.environment.agents.agent_registry import AgentRegistry
-from swarm.optimizer.edge_optimizer.optimization import optimize
 
-
-from src.utils.data import SyntheticEmotionDataset
+from swarm.graph import Graph
+from swarm.graph.swarm import Swarm
 
 
 class CoTStep(Node):
@@ -93,6 +100,14 @@ class CoTStep(Node):
 
         return outputs
 
+erc_prompt = """
+You need to assess emotion of the first (A) interlocutor in the dialogue, estimate your confidence and give reasoning for your answer.
+Your answer should consist of an emotion and an assessment of the level of confidence in it in the range from 0 to 1.
+To select emotions, use Ekman's classification into 5 main emotions - Anger, Disgust, Fear, Happiness, Sadness.
+Separate the emotion and the response using a semicolon.
+Response example:
+`Anger; 0.7`
+"""
 
 @AgentRegistry.register('InsideOutCOT')
 class CustomCOT(Graph):
@@ -117,47 +132,128 @@ class CustomCOT(Graph):
         for thought in thoughts:
             self.add_node(thought)
 
-class InsideOutEvaluator:
-    def __init__(self, dataset: SyntheticEmotionDataset, batch_size = 4):
-        self.dataset = dataset
-        self.batch_size = batch_size
 
-    def reset(self):
-        pass
+class Evaluator():
+    def __init__(
+            self,
+            swarm,
+            train_dataset,
+            logger: Logger = None
+    ) -> None:
 
-    def evaluate(self, graph, return_moving_average=True):
+        self._swarm: Optional[Swarm] = swarm
+        self._train_dataset = train_dataset
+        self.logger = logger
 
+    def optimize_swarm(
+            self,
+            num_iters: int,
+            lr: float,
+    ) -> torch.Tensor:
+
+        assert self._swarm is not None
+
+        dataset = self._train_dataset
+
+        print(f"Optimizing swarm")
+
+        optimizer = torch.optim.Adam(self._swarm.connection_dist.parameters(), lr=lr)
+        batch_size = 8
+        len_dataset = 64
+        for i_iter in range(num_iters):
+            print(f"Iter {i_iter}", 80*'-')
+
+            start_ts = time.time()
+
+            future_answers = []
+            log_probs = []
+            correct_answers = []
+
+            for i_record in tqdm(range(batch_size)):
+                i_record = (batch_size * i_iter + i_record) % len_dataset
+                record = dataset[i_record]
+
+                realized_graph, log_prob = self._swarm.connection_dist.realize(
+                    self._swarm.composite_graph,
+                )
+
+                input_dict = {"task": erc_prompt + "\nDialogue:\n\n" + record.format_dialogue()}
+                answer = self._swarm.arun(input_dict, realized_graph)
+                future_answers.append(answer)
+                log_probs.append(log_prob)
+                correct_answer = record.emotion.value
+                correct_answers.append(correct_answer)
+
+            async def run_coroutines():
+                return await asyncio.gather(*future_answers)
+
+            raw_answers = asyncio.run(run_coroutines())
+
+            print(f"Batch time {time.time() - start_ts:.3f}")
+
+            loss_list: List[torch.Tensor] = []
+            utilities: List[float] = []
+            for raw_answer, log_prob, correct_answer in zip(raw_answers, log_probs, correct_answers):
+                print(raw_answer)
+                answer = raw_answer[0].split(";")[0].lower()
+                assert isinstance(correct_answer, str), \
+                    f"String expected but got {correct_answer} of type {type(correct_answer)} (1)"
+                utility = (answer == correct_answer)
+                utilities.append(utility)
+                single_loss = - log_prob * utility
+                loss_list.append(single_loss)
+
+            print("utilities:", utilities)
+            mean_utility = np.mean(np.array(utilities))
+            total_loss = torch.mean(torch.stack(loss_list))
+
+            print("loss:", total_loss.item())
+            optimizer.zero_grad()
+            total_loss.backward()
+            print("Grad:", self._swarm.connection_dist.edge_logits.grad)
+            optimizer.step()
+
+            print("edge_logits:", self._swarm.connection_dist.edge_logits)
+            edge_probs = torch.sigmoid(self._swarm.connection_dist.edge_logits)
+            print("edge_probs:", edge_probs)
+
+            self.logger.log(metric_name="train_loss", value=total_loss.item(),
+                            log_stdout=True, log_wandb=True)
+            self.logger.log(metric_name="train_utility", value=mean_utility.item(),
+                            log_stdout=True, log_wandb=True)
+
+            self.logger.info("end of iteration")
+
+        print("Done!")
+        edge_probs = torch.sigmoid(self._swarm.connection_dist.edge_logits)
+        return edge_probs
 
 
 def main():
-    model_name = "openai/gpt-4o-mini"
+    dset = SyntheticEmotionDataset("data/synthetic_dialogues/v2/dialogues.json",
+                                   "data/synthetic_dialogues/v2/scenarios.json")
 
-    dset = SyntheticEmotionDataset(["data/synthetic_dialogues/empathetic_dialogues.json",
-                                    "data/synthetic_dialogues/non_empathetic_dialogues.json"],
-                                   [1, 0], "data/synthetic_dialogues/scenarios.json")
+    swarm = Swarm(["InsideOutCOT", "InsideOutCOT"], "gaia", model_name="gpt-4o-mini",
+                  edge_optimize=True, )
 
-    first_item, _ = dset[15]
-    swarm = Swarm(["InsideOutCOT", "InsideOutCOT"], "gaia", model_name=model_name,
-                  edge_optimize=True,
-                  )
-    evaluator = Evaluator(
-        swarm,
-        dataset_train,
-        dataset_val,
-        model_name=model_name,
-        enable_tensorboard=True,
-        enable_artifacts=True,
-        tensorboard_tag=tag,
+    config = {
+        "lr": 0.1,
+        "num_iters": 30
+    }
+    logger = Logger(
+        group="gptswarm_erc_debug",
+        run_name="test_run2",
+        tags=["debug"],
+        config=config,
+        use_wandb=True,
     )
 
-    task_template = ("You need to assess emotion of the first (A) interlocutor in the dialogue, estimate your confidence and give reasoning for your answer."
-            "Your answer should consist of an emotion and an assessment of the level of confidence in it in the range from 0 to 1."
-            "To select emotions, use Ekman's classification into 5 main emotions - Anger, Disgust, Fear, Happiness, Sadness."
-            "Separate the emotion and the response using a semicolon."
-            "What emotion does the first interlocutor (A) feel in the dialogue?\n{dialogue}")
-    inputs = {"task": task}
-    answer = swarm.run(inputs)
-    print(answer)
+    evaluator = Evaluator(
+        swarm,
+        dset,
+        logger
+    )
+    evaluator.optimize_swarm(num_iters=config["num_iters"], lr=config["lr"])
 
 
 if __name__ == "__main__":
