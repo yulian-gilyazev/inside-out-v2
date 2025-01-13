@@ -164,13 +164,13 @@ def main():
         config=wandb_config
     )
 
-    dialogues_generator = DialogueGenerator(llm_client, scenarios,
-                                            first_interlocutor_prompt_template,
-                                            second_interlocutor_empathetic_prompt_template,
-                                            second_interlocutor_non_empathetic_prompt_template,
-                                            args.min_n_rounds,
-                                            args.max_n_rounds,
-                                            logger)
+    dialogues_generator = DialogueGenerator(
+        llm_client, scenarios,
+        first_interlocutor_prompt_template,
+        second_interlocutor_empathetic_prompt_template,
+        second_interlocutor_non_empathetic_prompt_template,
+        args.min_n_rounds, args.max_n_rounds,
+        logger)
 
     dialogues = dialogues_generator.generate_dialogues(args.n_dialogues_per_scenario)
 

@@ -9,8 +9,8 @@ from src.schema.llm_config import LLMConfig
 from src.utils.data import SyntheticEmotionDataset
 
 """ Example
-python3 -m src.scripts.experiments.run_inside_out_agent --agent_name 'baseline-erc' \
-    --out_path 'data/baseline_erc_results.json'
+python3 -m src.scripts.experiments.run_inside_out_agent --agent_name 'inside-out-erc' \
+    --out_path 'data/inside_out_erc_results.json'
 """
 
 
@@ -57,7 +57,7 @@ def main():
 
     logger.info(f"Completion tokens: {llm_client.get_output_tokens().sum()}")
     logger.info(f"Prompt tokens: {llm_client.get_input_tokens().sum()}")
-    logger.info(f"LLM queries num: {llm_client.get_output_tokens().shape[0]}")
+    logger.info(f"Generation cost: {llm_client.get_generations_cost().shape[0]}")
 
 
 if __name__ == "__main__":

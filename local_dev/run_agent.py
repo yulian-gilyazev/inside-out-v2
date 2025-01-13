@@ -49,7 +49,7 @@ def main():
     logger.info(f"Completion tokens: {llm_client.get_output_tokens().sum()}")
     logger.info(f"Prompt tokens: {llm_client.get_input_tokens().sum()}")
     logger.info(f"LLM queries num: {llm_client.get_output_tokens().shape[0]}")
-    logger.info(f"Total cost: {llm_client.get_generations_cost()} (usd)")
+    # logger.info(f"Total cost: {llm_client.get_generations_cost()} (usd)")
 
 
 if __name__ == "__main__":

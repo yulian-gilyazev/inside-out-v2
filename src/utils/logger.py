@@ -39,7 +39,7 @@ class Logger:
             return
         if log_wandb:
             if self.use_wandb:
-                self.run.log({metric_name: value}, commit=False)
+                wandb.log({metric_name: value})
             else:
                 logger.error("Wandb logging is not enabled")
         if log_stdout:
