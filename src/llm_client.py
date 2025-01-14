@@ -39,7 +39,7 @@ class LLMClient(TokenCounterMixin):
         self.client = OpenAI(api_key=config.api_key, base_url=config.base_url)
         self.config = config
 
-    def chat(self, messages: List[Dict[str, str]], max_tokens=None, retries=3, backoff_factor=0.3):
+    def chat(self, messages: List[Dict[str, str]], max_tokens=None, retries=6, backoff_factor=0.3):
         if not max_tokens:
             max_tokens = self.config.max_tokens
 

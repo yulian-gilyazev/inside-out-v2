@@ -22,7 +22,7 @@ def parse_arguments():
     parser.add_argument('--scenarios_path', type=str,
                         default="data/synthetic_dialogues/v2/scenarios.json", help='Path to scenarios')
     parser.add_argument('--llm_config_path', type=str,
-                        default="configs/openai_gpt_4o_config.json", help='Path to llm config')
+                        default="configs/gpt_4o_mini_config.json", help='Path to llm config')
     parser.add_argument('--out_path', type=str, help='Path where scenarios will be saved')
     args = parser.parse_args()
     return args
@@ -42,7 +42,7 @@ def main():
 
     logger.info(f"Start inference on {len(dset)} dialogues")
     result = []
-    for idx in tqdm(range(len(dset))):
+    for idx in tqdm(range(200)):
         item = dset[idx]
 
         context = AgentContext(data={"input": item.format_dialogue()})
@@ -57,7 +57,7 @@ def main():
 
     logger.info(f"Completion tokens: {llm_client.get_output_tokens().sum()}")
     logger.info(f"Prompt tokens: {llm_client.get_input_tokens().sum()}")
-    logger.info(f"Generation cost: {llm_client.get_generations_cost().shape[0]}")
+    logger.info(f"Generation cost: {llm_client.get_generations_cost()}")
 
 
 if __name__ == "__main__":
