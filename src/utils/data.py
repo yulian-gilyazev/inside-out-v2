@@ -1,5 +1,7 @@
 from typing import List
 import json
+import numpy as np
+import copy
 from dataclasses import dataclass
 from src.schema.emotions import Emotion
 
@@ -21,7 +23,9 @@ class Dialogue:
 
 
 class SyntheticEmotionDataset:
-    def __init__(self, dialogues_path: str, scenarios_path: str):
+    def __init__(self, dialogues_path: str, scenarios_path: str, shuffle=False):
+        self.shuffle = shuffle
+
         self.dialogues = []
 
         with open(scenarios_path, "r") as f:
@@ -47,10 +51,22 @@ class SyntheticEmotionDataset:
             )
             self.dialogues.append(dialogue)
 
-    def __getitem__(self, idx):
+        if self.shuffle:
+            self._idxs = np.random.permutation(len(self.dialogues))
+        else:
+            self._idxs = np.arange(len(self.dialogues))
+
+    def __getitem__(self, _idx):
+        idx = self._idxs[_idx]
         if idx >= len(self.dialogues):
             raise IndexError
         return self.dialogues[idx]
 
     def __len__(self):
-        return len(self.dialogues)
+        return len(self._idxs)
+
+
+def split_dataset(dataset: SyntheticEmotionDataset, size: int):
+    dataset = copy.deepcopy(dataset)
+    dataset._idxs = dataset._idxs[:size]
+    return dataset
