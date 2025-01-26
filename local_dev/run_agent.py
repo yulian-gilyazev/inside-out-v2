@@ -7,7 +7,7 @@ from src.schema.llm_config import LLMConfig
 
 
 def main():
-    with open("configs/openai_gpt_4o_config.json", "r") as f:
+    with open("configs/openai_gpt_4o_mini_config.json", "r") as f:
         config_dct = json.load(f)
     llm_config = LLMConfig.from_dict(config_dct)
     llm_client = LLMClient(llm_config)
@@ -49,7 +49,7 @@ def main():
     logger.info(f"Completion tokens: {llm_client.get_output_tokens().sum()}")
     logger.info(f"Prompt tokens: {llm_client.get_input_tokens().sum()}")
     logger.info(f"LLM queries num: {llm_client.get_output_tokens().shape[0]}")
-    # logger.info(f"Total cost: {llm_client.get_generations_cost()} (usd)")
+    logger.info(f"Total cost: {llm_client.get_generations_cost():.6f} (usd)")
 
 
 if __name__ == "__main__":
