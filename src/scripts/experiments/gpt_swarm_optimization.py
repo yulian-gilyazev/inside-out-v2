@@ -281,6 +281,14 @@ class Optimizer:
                 log_wandb=False,
             )
 
+            tensor_path = "edge_probs_tensor.pt"
+            torch.save(edge_probs, tensor_path)
+
+            # Логируем файл с тензором через Artifact
+            artifact = self.logger.wandb.Artifact(name=f"edge_probs_{i_iter}", type="dataset")
+            artifact.add_file(tensor_path)
+            self.logger.run.log_artifact(artifact)
+
             self.logger.log(
                 metric_name="train_loss",
                 value=total_loss.item(),
@@ -306,6 +314,7 @@ def main():
     dset = SyntheticEmotionDataset(
         "data/synthetic_dialogues/v2/dialogues.json",
         "data/synthetic_dialogues/v2/scenarios.json",
+        shuffle=True
     )
 
     dset = split_dataset(dset, 256)
@@ -331,7 +340,7 @@ def main():
 
     logger = Logger(
         group="gptswarm_erc_debug",
-        run_name="test_run2",
+        run_name="inside-out-cot-agents",
         tags=["debug"],
         config=config.to_dict(),
         use_wandb=True,

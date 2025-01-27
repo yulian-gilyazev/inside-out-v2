@@ -13,6 +13,7 @@ class Logger:
             self.run = wandb.init(project=WANDB_PROJECT_NAME,
                                   group=group, name=run_name,
                                   notes=notes, tags=tags, config=config)
+            self.wandb = wandb
 
     @staticmethod
     def info(message):
