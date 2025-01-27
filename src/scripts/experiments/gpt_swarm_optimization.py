@@ -321,7 +321,7 @@ def main():
 
     config = OptimizationConfig(
         lr=0.1,
-        num_iters=60,
+        num_iters=256,
         batch_size=16,
     )
 
@@ -339,9 +339,9 @@ def main():
     )
 
     logger = Logger(
-        group="gptswarm_erc_debug",
-        run_name="inside-out-cot-agents",
-        tags=["debug"],
+        group="gptswarm_erc",
+        run_name="inside-out-cot-agents2",
+        tags=["inside-out-cot-agents"],
         config=config.to_dict(),
         use_wandb=True,
     )
