@@ -26,7 +26,7 @@ def main():
             "SadnessERCCOT",
         ],
         "gaia",
-        model_name="gpt-4o-mini",
+        model_name="openai/gpt-4o-mini",
         edge_optimize=True,
     )
 
@@ -49,5 +49,5 @@ def main():
 
 if __name__ == "__main__":
     # "https://api.openai.com/v1", "https://api.vsegpt.ru/v1"
-    os.environ["GPTSWARM_API_URL"] = "https://api.vsegpt.ru/v1"
+    os.environ["GPTSWARM_API_URL"] = "https://api.openai.com/v1"
     main()

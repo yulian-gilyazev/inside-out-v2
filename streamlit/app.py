@@ -1,3 +1,7 @@
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import json
 import re
 import sys
@@ -84,7 +88,7 @@ class GPTSwarmOptimizedERCAgent(BaseModel):
                 "SadnessERCCOT",
             ],
             "gaia",
-            model_name="openai/gpt-4o-mini",
+            model_name="gpt-4o-mini",
             edge_optimize=True,
         )
 
@@ -98,7 +102,8 @@ class GPTSwarmOptimizedERCAgent(BaseModel):
             "task": self.erc_prompt + "\nDialogue:\n\n" + dialogue.format_dialogue()
         }
 
-        predicted = self.swarm.run(input_dict, self.realized_graph)
+        predicted = self.swarm.run(input_dict, self.realized_graph)[0]
+        print(predicted)
         emotion = self._emotion_from_text(predicted)
         return emotion
 
