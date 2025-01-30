@@ -13,7 +13,7 @@ import torch
 import streamlit as st
 from src.agent import AgentContext, Pipeline, registry
 from src.llm_client import LLMClient
-from src.models.bert_erc import BertERCModel
+# from src.models.bert_erc import BertERCModel
 from src.schema.emotions import Emotion
 from src.schema.llm_config import LLMConfig
 from src.scripts.experiments.gpt_swarm_optimization import *
@@ -57,11 +57,12 @@ class InsideOutModel(BaseModel):
 
 class BertModel(BaseModel):
     def __init__(self):
-        self.model = BertERCModel()
+        # self.model = BertERCModel()
 
     def __call__(self, dialogue: Dialogue) -> Optional[Emotion]:
-        predicted = self.model.predict([dialogue.first_messages])[0]
-        return max(predicted, key=predicted.get)
+        # predicted = self.model.predict([dialogue.first_messages])[0]
+        # return max(predicted, key=predicted.get)
+        return Emotion.HAPPINESS
 
 
 class GPTSwarmOptimizedERCAgent(BaseModel):
