@@ -57,6 +57,7 @@ class InsideOutModel(BaseModel):
 
 class BertModel(BaseModel):
     def __init__(self):
+        pass
         # self.model = BertERCModel()
 
     def __call__(self, dialogue: Dialogue) -> Optional[Emotion]:
