@@ -7,7 +7,7 @@ from src.schema.llm_config import LLMConfig
 
 
 def main():
-    with open("configs/openai_gpt_4o_mini_config.json", "r") as f:
+    with open("configs/gpt_4o_mini_config.json", "r") as f:
         config_dct = json.load(f)
     llm_config = LLMConfig.from_dict(config_dct)
     llm_client = LLMClient(llm_config)

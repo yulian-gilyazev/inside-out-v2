@@ -1,7 +1,5 @@
 import sys
 import os
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
 import json
 import re
 import sys
@@ -33,7 +31,7 @@ class BaseModel:
 
 
 class InsideOutModel(BaseModel):
-    llm_config_path = "configs/gpt_4o_mini_config.json"
+    llm_config_path = "configs/openai_gpt_4o_mini_config.json"
     agent_name = "inside-out-erc"
 
     def __init__(self):
@@ -47,7 +45,6 @@ class InsideOutModel(BaseModel):
         self.pipeline = Pipeline(self.inside_out_pipeline_config, llm_client)
 
     def __call__(self, dialogue: Dialogue) -> Optional[Emotion]:
-
         context = AgentContext(data={"input": dialogue.format_dialogue()})
         context = self.pipeline.process(context)
         predicted = context.get_value(self.inside_out_pipeline_config.output_id)
