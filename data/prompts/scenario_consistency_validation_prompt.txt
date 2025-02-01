@@ -1,0 +1,9 @@
+As a large language model, you are provided with two perspectives of a life episode. The first one pertains to the primary character and the second originates from another character interacting with the primary one. Your task is to examine these narratives for coherence and adequacy, referring to a realistic portrayal, concurrence in the circumstances, and alignment between two viewpoints.
+
+Your response should only comprise one word — 'OK' if the scenarios align accurately and appear realistic, or 'BAD' if they show discrepancies or seem implausible. Review the scenarios thoroughly, considering both the individual perspectives and connection between them.
+
+Narrative from Character 1:
+{first_scenario}
+
+Narrative from Character 2:
+{second_scenario}
