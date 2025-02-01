@@ -66,7 +66,10 @@ class SyntheticEmotionDataset:
         return len(self._idxs)
 
 
-def split_dataset(dataset: SyntheticEmotionDataset, size: int):
+def split_dataset(dataset: SyntheticEmotionDataset, size: int, left=True):
     dataset = copy.deepcopy(dataset)
-    dataset._idxs = dataset._idxs[:size]
+    if left:
+        dataset._idxs = dataset._idxs[:size]
+    else:
+        dataset._idxs = dataset._idxs[size:]
     return dataset
