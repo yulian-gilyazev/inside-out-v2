@@ -10,7 +10,7 @@ from src.scripts.experiments.gpt_swarm_optimization import *
 
 
 """ Example
-python3 -m src.scripts.experiments.run_gptswarm_erc --out_path 'data/gptswarm_agent_erc_result_gpt4o-mini.json'
+python3 -m src.scripts.experiments.run_gptswarm_erc --out_path 'data/gptswarm_agent_erc_random_result_gpt4o-mini.json'
 """
 
 
@@ -43,17 +43,17 @@ class GPTSwarmOptimizedERCAgent:
             edge_optimize=True,
         )
 
-        edge_mask = edge_probs > self.edge_prob_threshold
-        self.realized_graph = self.swarm.connection_dist.realize_mask(
-            self.swarm.composite_graph, edge_mask
-        )
+        # edge_mask = edge_probs > self.edge_prob_threshold
+        # self.realized_graph = self.swarm.connection_dist.realize_mask(
+        #     self.swarm.composite_graph, edge_mask
+        # )
 
     def __call__(self, dialogue: Dialogue) -> str:
         input_dict = {
             "task": self.erc_prompt + "\nDialogue:\n\n" + dialogue.format_dialogue()
         }
 
-        predicted = self.swarm.run(input_dict, self.realized_graph)[0]
+        predicted = self.swarm.run(input_dict)[0]
         return predicted
 
 
@@ -74,6 +74,7 @@ def main():
     args = parse_arguments()
 
     dset = SyntheticEmotionDataset(args.dialogues_path, args.scenarios_path)
+    dset = split_dataset(dset, 200)
     dialogues = [dset[i].first_messages for i in range(len(dset))]
 
     model = GPTSwarmOptimizedERCAgent(model_name=args.model_name)

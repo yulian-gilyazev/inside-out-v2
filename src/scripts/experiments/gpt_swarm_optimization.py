@@ -180,14 +180,78 @@ class OptimizationConfig:
 
 
 class Optimizer:
+    evaluation_n_steps = 48
+
     def __init__(
-        self, swarm, train_dataset, config: OptimizationConfig, logger: Logger
+        self, swarm, train_dataset: SyntheticEmotionDataset,
+            test_dset: SyntheticEmotionDataset, config: OptimizationConfig, logger: Logger
     ) -> None:
 
         self._swarm: Optional[Swarm] = swarm
         self._train_dataset = train_dataset
+        self._test_dset = test_dset
         self.config = config
         self.logger = logger
+
+    def evaluate(self):
+        assert self._swarm is not None
+
+        dataset = self._test_dset
+
+        self.logger.info("Evaluating")
+
+        start_ts = time.time()
+
+        future_answers = []
+        log_probs = []
+        correct_answers = []
+
+        for i in range(len(dataset)):
+            record = dataset[i]
+
+            realized_graph, log_prob = self._swarm.connection_dist.realize(
+                self._swarm.composite_graph,
+            )
+
+            input_dict = {
+                "task": erc_prompt + "\nDialogue:\n\n" + record.format_dialogue()
+            }
+            answer = self._swarm.arun(input_dict, realized_graph)
+            future_answers.append(answer)
+            log_probs.append(log_prob)
+            correct_answer = record.emotion.value
+            correct_answers.append(correct_answer)
+
+        async def run_coroutines():
+            return await asyncio.gather(*future_answers)
+
+        raw_answers = asyncio.run(run_coroutines())
+
+        self.logger.info(f"Inference time {time.time() - start_ts:.3f}")
+
+        utilities: List[float] = []
+        for raw_answer, log_prob, correct_answer in zip(
+                raw_answers, log_probs, correct_answers
+        ):
+            self.logger.info(raw_answer)
+            answer = raw_answer[0].split(";")[0].lower()
+            assert isinstance(
+                correct_answer, str
+            ), f"String expected but got {correct_answer} of type {type(correct_answer)} (1)"
+            utility = answer == correct_answer
+            utilities.append(utility)
+
+        self.logger.info(f"utilities: {np.mean(np.array(utilities))}")
+
+        mean_utility = np.mean(np.array(utilities))
+
+        self.logger.log(
+            metric_name="val_utility",
+            value=mean_utility.item(),
+            log_stdout=True,
+            log_wandb=True,
+        )
+        self.logger.info("Done!")
 
     def optimize_swarm(self) -> torch.Tensor:
 
@@ -202,6 +266,8 @@ class Optimizer:
         )
         len_dataset = len(dataset)
         for i_iter in range(self.config.num_iters):
+            if i_iter % self.evaluation_n_steps == 0:
+                self.evaluate()
             self.logger.info(f"Iter {i_iter}\n{80 * '-'}")
 
             start_ts = time.time()
@@ -284,7 +350,6 @@ class Optimizer:
             tensor_path = "edge_probs_tensor.pt"
             torch.save(edge_probs, tensor_path)
 
-            # Логируем файл с тензором через Artifact
             artifact = self.logger.wandb.Artifact(name=f"edge_probs_{i_iter}", type="dataset")
             artifact.add_file(tensor_path)
             self.logger.run.log_artifact(artifact)
@@ -311,18 +376,30 @@ class Optimizer:
 
 
 def main():
-    dset = SyntheticEmotionDataset(
-        "data/synthetic_dialogues/v2/dialogues.json",
-        "data/synthetic_dialogues/v2/scenarios.json",
-        shuffle=True
+    train_dset = split_dataset(
+        SyntheticEmotionDataset(
+            "data/synthetic_dialogues/v2/dialogues.json",
+            "data/synthetic_dialogues/v2/scenarios.json",
+            shuffle=True
+        ),
+        788,
+        left=False
     )
 
-    dset = split_dataset(dset, 256)
+    test_dset = split_dataset(
+        SyntheticEmotionDataset(
+            "data/synthetic_dialogues/v2/dialogues.json",
+            "data/synthetic_dialogues/v2/scenarios.json",
+            shuffle=True
+        ),
+        100,
+        left=True
+    )
 
     config = OptimizationConfig(
         lr=0.1,
-        num_iters=256,
-        batch_size=16,
+        num_iters=384,
+        batch_size=32,
     )
 
     swarm = Swarm(
@@ -340,13 +417,13 @@ def main():
 
     logger = Logger(
         group="gptswarm_erc",
-        run_name="inside-out-cot-agents2",
+        run_name="inside-out-cot-agents-2",
         tags=["inside-out-cot-agents"],
         config=config.to_dict(),
         use_wandb=True,
     )
 
-    optimizer = Optimizer(swarm, dset, config, logger)
+    optimizer = Optimizer(swarm, train_dset, test_dset, config, logger)
     optimizer.optimize_swarm()
 
 

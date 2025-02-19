@@ -24,7 +24,7 @@ class Dialogue:
 
 class SyntheticEmotionDataset:
     def __init__(self, dialogues_path: str, scenarios_path: str, shuffle=False):
-        self.shuffle = shuffle
+        self._shuffle = shuffle
 
         self.dialogues = []
 
@@ -51,10 +51,13 @@ class SyntheticEmotionDataset:
             )
             self.dialogues.append(dialogue)
 
-        if self.shuffle:
+        if self._shuffle:
             self._idxs = np.random.permutation(len(self.dialogues))
         else:
             self._idxs = np.arange(len(self.dialogues))
+            
+    def shuffle(self):
+        self._idxs = np.random.permutation(len(self.dialogues))
 
     def __getitem__(self, _idx):
         idx = self._idxs[_idx]
@@ -69,7 +72,10 @@ class SyntheticEmotionDataset:
 def split_dataset(dataset: SyntheticEmotionDataset, size: int, left=True):
     dataset = copy.deepcopy(dataset)
     if left:
-        dataset._idxs = dataset._idxs[:size]
+        dataset.dialogues = dataset.dialogues[:size]
     else:
-        dataset._idxs = dataset._idxs[size:]
+        dataset.dialogues = dataset.dialogues[size:]
+    dataset._idxs = np.random.permutation(len(dataset.dialogues))
+    if dataset._shuffle:
+        dataset.shuffle()
     return dataset
