@@ -10,7 +10,7 @@ The repo consists of:
 ## Quick Start
 
 ### Requirements
-- Python 3.8+
+- Python 3.10+
 - OpenAI API key
 - Docker (optional, for running the web interface)
 
@@ -54,3 +54,14 @@ python3 -m src.scripts.generate_dialogues --n_dialogues_per_scenario <n_dialogue
 ```sh
 python3 -m src.scripts.experiments.gpt_swarm_optimization
 ```
+
+
+## Results
+
+
+The table above shows the performance comparison of different emotion recognition in conversation (ERC) approaches on our synthetic dialogue dataset:
+
+
+|   | BERT Baseline| Inside-Out | GPTSwarm | GPTSwarm random |
+|:---|:-------------|:-------------|:-------------|:-------------|
+| accuracy| 0.645    | 0.375    | 0.8   | 0.625   |
