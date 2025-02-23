@@ -15,7 +15,7 @@ python3 -m src.scripts.experiments.run_gptswarm_erc --out_path 'data/gptswarm_ag
 
 
 class GPTSwarmOptimizedERCAgent:
-    edge_probs_path = "models/edge_probs_tensor_exp2.pt"
+    edge_probs_path = "models/gptswarm_erc_edge_probs_tensor.pt"
     erc_prompt = """
     You feel {emotion}. Act based on what emotion you are experiencing.
     You need to assess emotion of the first (A) interlocutor in the dialogue, estimate your confidence and give reasoning for your answer.
