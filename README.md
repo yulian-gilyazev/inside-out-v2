@@ -65,4 +65,4 @@ The table above shows the performance comparison of different emotion recognitio
 
 |   | BERT Baseline| Inside-Out | GPTSwarm | GPTSwarm random |
 |:---|:-------------|:-------------|:-------------|:-------------|
-| accuracy| 0.645    | 0.375    | 0.8   | 0.625   |
+| accuracy| 0.645    | 0.735    | 0.8   | 0.625   |
