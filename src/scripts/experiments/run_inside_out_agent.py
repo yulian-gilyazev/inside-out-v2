@@ -22,7 +22,7 @@ def parse_arguments():
     parser.add_argument('--scenarios_path', type=str,
                         default="data/synthetic_dialogues/v2/scenarios.json", help='Path to scenarios')
     parser.add_argument('--llm_config_path', type=str,
-                        default="configs/gpt_4o_mini_config.json", help='Path to llm config')
+                        default="configs/llm_generation/gpt_4o_mini_config.json", help='Path to llm config')
     parser.add_argument('--out_path', type=str, help='Path where scenarios will be saved')
     args = parser.parse_args()
     return args

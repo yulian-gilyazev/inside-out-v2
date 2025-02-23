@@ -16,7 +16,7 @@ python3 -m src.scripts.generate_scenarios \
     --scenario_prompt_path data/prompts/scenario_generation_prompt.txt \
     --scenario_emotion_validation_prompt_path data/prompts/scenario_emotion_validation_prompt.txt \
     --scenario_consistency_validation_prompt_path data/prompts/scenario_consistency_validation_prompt.txt \
-    --llm_config_path configs/openai_gpt_4o_config.json \
+    --llm_config_path configs/llm_generation/openai_gpt_4o_config.json \
     --out_path data/synthetic_dialogues/v2/scenarios.json
 """
 

@@ -31,9 +31,9 @@ echo -e "OPENAI_API_KEY=<your_openai_key>" > .env
 ```sh
 python3 -m src.scripts.generate_scenarios \
     --n_scenarios <n_scenarios> \
-    --scenario_prompt_path data/prompts/scenario_generation_prompt.txt \
-    --scenario_emotion_validation_prompt_path data/prompts/scenario_emotion_validation_prompt.txt \
-    --scenario_consistency_validation_prompt_path data/prompts/scenario_consistency_validation_prompt.txt \
+    --scenario_prompt_path configs/prompts/scenario_generation_prompt.txt \
+    --scenario_emotion_validation_prompt_path configs/prompts/scenario_emotion_validation_prompt.txt \
+    --scenario_consistency_validation_prompt_path configs/prompts/scenario_consistency_validation_prompt.txt \
     --llm_config_path <llm_config_path> \
     --out_path <scenarios_path>
 ```
@@ -41,9 +41,9 @@ python3 -m src.scripts.generate_scenarios \
 ```sh
 python3 -m src.scripts.generate_dialogues --n_dialogues_per_scenario <n_dialogues_per_scenario> \
     --scenarios_path <scenarios_path> \
-    --first_interlocutor_prompt_path data/prompts/first_interlocutor_prompt.txt \
-    --second_interlocutor_empathetic_prompt_path data/prompts/second_interlocutor_empathetic_prompt.txt \
-    --second_interlocutor_non_empathetic_prompt_path data/prompts/second_interlocutor_non_empathetic_prompt.txt \
+    --first_interlocutor_prompt_path configs/prompts/first_interlocutor_prompt.txt \
+    --second_interlocutor_empathetic_prompt_path configs/prompts/second_interlocutor_empathetic_prompt.txt \
+    --second_interlocutor_non_empathetic_prompt_path configs/prompts/second_interlocutor_non_empathetic_prompt.txt \
     --min_n_rounds <min_n_rounds> \
     --max_n_rounds <min_n_rounds> \
     --llm_config_path <llm_config_path> \
