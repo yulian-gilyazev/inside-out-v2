@@ -1,3 +1,4 @@
+from abc import BaseModel, abstractmethod
 import json
 import os
 import re
@@ -20,7 +21,7 @@ sys.path.append(os.path.join("libs", "GPTSwarm"))
 from swarm.graph.swarm import Swarm
 
 
-class BaseModel:
+class BaseERCModel(BaseModel):
     @staticmethod
     def _emotion_from_text(text: str) -> Optional[Emotion]:
         try:
@@ -28,8 +29,12 @@ class BaseModel:
         except:
             return None
 
+    @abstractmethod
+    def __call__(dialogue: Dialogue): -> Optional[Emotion]:
+        raise NotImplementedError
 
-class InsideOutModel(BaseModel):
+
+class InsideOutModel(BaseERCModel):
     llm_config_path = "configs/openai_gpt_4o_mini_config.json"
     agent_name = "inside-out-erc"
 
@@ -51,7 +56,7 @@ class InsideOutModel(BaseModel):
         return emotion
 
 
-class BertModel(BaseModel):
+class BertModel(BaseERCModel):
     def __init__(self):
         self.model = BertERCModel()
 
@@ -60,7 +65,7 @@ class BertModel(BaseModel):
         return max(predicted, key=predicted.get)
 
 
-class GPTSwarmOptimizedERCAgent(BaseModel):
+class GPTSwarmOptimizedERCAgent(BaseERCModel):
     edge_probs_path = "models/edge_probs_tensort_final.pt"
     erc_prompt = """
     You feel {emotion}. Act based on what emotion you are experiencing.
