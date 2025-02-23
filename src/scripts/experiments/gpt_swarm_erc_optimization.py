@@ -421,6 +421,5 @@ def main():
 
 
 if __name__ == "__main__":
-    # "https://api.openai.com/v1", "https://api.vsegpt.ru/v1"
     os.environ["GPTSWARM_API_URL"] = "https://api.openai.com/v1"
     main()

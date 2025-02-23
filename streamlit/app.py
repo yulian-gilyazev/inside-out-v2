@@ -1,6 +1,5 @@
-import sys
-import os
 import json
+import os
 import re
 import sys
 import time
@@ -11,7 +10,7 @@ import torch
 import streamlit as st
 from src.agent import AgentContext, Pipeline, registry
 from src.llm_client import LLMClient
-# from src.models.bert_erc import BertERCModel
+from src.models.bert_erc import BertERCModel
 from src.schema.emotions import Emotion
 from src.schema.llm_config import LLMConfig
 from src.scripts.experiments.gpt_swarm_optimization import *
@@ -54,13 +53,11 @@ class InsideOutModel(BaseModel):
 
 class BertModel(BaseModel):
     def __init__(self):
-        pass
-        # self.model = BertERCModel()
+        self.model = BertERCModel()
 
     def __call__(self, dialogue: Dialogue) -> Optional[Emotion]:
-        # predicted = self.model.predict([dialogue.first_messages])[0]
-        # return max(predicted, key=predicted.get)
-        return Emotion.HAPPINESS
+        predicted = self.model.predict([dialogue.first_messages])[0]
+        return max(predicted, key=predicted.get)
 
 
 class GPTSwarmOptimizedERCAgent(BaseModel):
@@ -102,7 +99,6 @@ class GPTSwarmOptimizedERCAgent(BaseModel):
         }
 
         predicted = self.swarm.run(input_dict, self.realized_graph)[0]
-        print(predicted)
         emotion = self._emotion_from_text(predicted)
         return emotion
 
@@ -147,6 +143,10 @@ def get_dialogue_from_text(text: str, first_sep="A", second_sep="B") -> Dialogue
 
 
 def main(models: Dict[str, Any], examples: Dict[str, str]) -> None:
+    """
+    Streamlit app for emotion recognition in conversation.
+
+    """
     st.title("Emotion Recognition in Conversation")
     with st.sidebar:
         st.header("About app")

@@ -9,12 +9,12 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /app
 
 COPY requirements.txt .
+COPY requirements-streamlit.txt .
+
 
 RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements-streamlit.txt
 
-RUN pip install python-dotenv
-RUN pip install opencv-python==4.8.0.74
-RUN pip install opencv-python-headless==4.8.0.74
 
 COPY . /app
 

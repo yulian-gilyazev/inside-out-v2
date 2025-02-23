@@ -1,0 +1,12 @@
+version: "3.8"
+
+services:
+  streamlit-app:
+    image: inside-out-v2-streamlit-app:latest
+    build: .
+    container_name: streamlit-inside-out-v2
+    restart: unless-stopped
+    ports:
+      - "8501:8501"
+    env_file:
+      - .env

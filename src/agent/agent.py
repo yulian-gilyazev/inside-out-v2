@@ -5,6 +5,9 @@ from abc import ABC, abstractmethod
 
 
 class Agent(ABC):
+    """
+    Abstract base class for all agents.
+    """
     def __init__(self, config: AgentConfig):
         self.config = config
         self.next_agents: List[str] = []
@@ -26,6 +29,9 @@ class Agent(ABC):
 
 
 class IOAgent(Agent):
+    """
+    Agent that uses an LLM to process a message.
+    """
     def __init__(self, config: IOAgentConfig, llm_client: LLMClient):
         super().__init__(config)
         self.llm_client = llm_client
@@ -44,12 +50,14 @@ class IOAgent(Agent):
 
 
 class EchoAgent(Agent):
+    """
+    Agent that echoes the input message.
+    """
     def __init__(self, config: IOAgentConfig):
         super().__init__(config)
 
     def handle(self, context: AgentContext) -> AgentContext:
         return context
-
 
 class AgentFactory(ABC):
     @staticmethod

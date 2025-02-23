@@ -42,6 +42,9 @@ class PipelineGraphMixin:
 
 
 class Pipeline(PipelineGraphMixin):
+    """
+    Pipeline class for running a pipeline of agents.
+    """
     def __init__(self, config: PipelineAgentConfig, llm_client: LLMClient):
         self.config = config
         self.llm_client = llm_client
