@@ -5,6 +5,7 @@
 The repo consists of:
 - Dataset generation pipeline for creating synthetic emotional conversations
 - Emotion recognition agents specialized for different emotions (Anger, Disgust, Fear, Happiness, Sadness)
+- Epathetic response generation agents (in progress)
 - Streamlit web interface for interactive usage
 
 ## Quick Start
