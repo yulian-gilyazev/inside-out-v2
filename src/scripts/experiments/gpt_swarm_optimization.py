@@ -376,25 +376,18 @@ class Optimizer:
 
 
 def main():
-    train_dset = split_dataset(
+    test_dset, train_dset = split_dataset(
         SyntheticEmotionDataset(
             "data/synthetic_dialogues/v2/dialogues.json",
             "data/synthetic_dialogues/v2/scenarios.json",
-            shuffle=True
+            shuffle=False
         ),
-        788,
-        left=False
+        200,
     )
+    
+    train_dset.shuffle()
 
-    test_dset = split_dataset(
-        SyntheticEmotionDataset(
-            "data/synthetic_dialogues/v2/dialogues.json",
-            "data/synthetic_dialogues/v2/scenarios.json",
-            shuffle=True
-        ),
-        100,
-        left=True
-    )
+    test_dset, _ = split_dataset(test_dset, 100)
 
     config = OptimizationConfig(
         lr=0.1,

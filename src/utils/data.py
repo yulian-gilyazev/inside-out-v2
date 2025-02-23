@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Tuple
 import json
 import numpy as np
 import copy
@@ -57,6 +57,7 @@ class SyntheticEmotionDataset:
             self._idxs = np.arange(len(self.dialogues))
             
     def shuffle(self):
+        self._shuffle = True
         self._idxs = np.random.permutation(len(self.dialogues))
 
     def __getitem__(self, _idx):
@@ -69,13 +70,20 @@ class SyntheticEmotionDataset:
         return len(self._idxs)
 
 
-def split_dataset(dataset: SyntheticEmotionDataset, size: int, left=True):
-    dataset = copy.deepcopy(dataset)
-    if left:
-        dataset.dialogues = dataset.dialogues[:size]
-    else:
-        dataset.dialogues = dataset.dialogues[size:]
-    dataset._idxs = np.random.permutation(len(dataset.dialogues))
+def split_dataset(dataset: SyntheticEmotionDataset, size_left: int) -> Tuple[SyntheticEmotionDataset, SyntheticEmotionDataset]:
+    assert size_left >= 0
+    assert size_left <= len(dataset)
+
+    dataset_left = copy.deepcopy(dataset)
+    dataset_right = copy.deepcopy(dataset)
+
+    dataset_left.dialogues = dataset.dialogues[:size_left]
+    dataset_left._idxs = dataset._idxs[:size_left]
+    dataset_right.dialogues = dataset.dialogues[size_left:]
+    dataset_right._idxs = dataset._idxs[size_left:]
+
     if dataset._shuffle:
-        dataset.shuffle()
-    return dataset
+        dataset_left.shuffle()
+        dataset_right.shuffle()
+    
+    return dataset_left, dataset_right
