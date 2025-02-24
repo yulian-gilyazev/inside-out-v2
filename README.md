@@ -59,6 +59,9 @@ python3 -m src.scripts.experiments.gpt_swarm_optimization
 
 ## Results
 
+Exp logs:
+* [GPTSwarm ERC](https://wandb.ai/yulian-gilyazev/inside-out-v2/runs/fpcdgcor?nw=nwuseryuliangilyazev)
+
 
 The table above shows the performance comparison of different emotion recognition in conversation (ERC) approaches on our synthetic dialogue dataset:
 
