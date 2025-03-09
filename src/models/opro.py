@@ -1,6 +1,6 @@
 import re
-from loguru import logger
-from src.llm_clients import LLMClient
+from src.utils.logger import Logger
+from src.llm_client import LLMClient
 from typing import Callable, Optional, Tuple, List, Union, Any
 
 
@@ -17,7 +17,8 @@ class OPRO:
             metaprompt: str, 
             task_prompt: str, 
             check_fn: Optional[Callable[[str], bool]] = None, 
-            prompt_tokens: Tuple[str, str] = ("<TEXT>", "</TEXT>")
+            prompt_tokens: Tuple[str, str] = ("<TEXT>", "</TEXT>"), 
+            logger: Logger = None
     ):
         """
         Initialize OPRO.
@@ -39,6 +40,7 @@ class OPRO:
         self.check_fn = check_fn
         self.prompt_tokens = prompt_tokens
         self.re_pattern = rf"{prompt_tokens[0]}(.*?){prompt_tokens[1]}"
+        self.logger = logger
         # State: 0 - waiting for step, 1 - waiting for reward
         self._state = 0
 
@@ -67,7 +69,8 @@ class OPRO:
             raise ValueError("Expected to get reward before next step")
         
         if retries <= 0:
-            logger.error("All attempts to generate prompt have been exhausted!")
+            if self.logger is not None:
+                self.logger.error("All attempts to generate prompt have been exhausted!")
             self.prompts_history.append(self.prompts_history[-1])
             self._state = 1
             return self.prompts_history[-1]
@@ -92,12 +95,15 @@ class OPRO:
         if match:
             new_prompt = match.group(1)
         else:
-            logger.error("Ответ LLM не соответствует шаблону")
+            if self.logger is not None:
+                self.logger.error("LLM response does not match the template")
+                self.logger.info(text)
             return self.step(retries=retries-1)
         
         # Checking the validity of the prompt
         if self.check_fn is not None and not self.check_fn(new_prompt):
-            logger.warning("Prompt did not pass the validity check")
+            if self.logger is not None:
+                self.logger.warning("Prompt did not pass the validity check")
             return self.step(retries=retries-1)
         
         self._state = 1
@@ -111,9 +117,6 @@ class OPRO:
         
         Args:
             reward: Value of the reward
-            
-        Raises:
-            ValueError: If called in the wrong state
         """
         if self._state != 1:
             raise ValueError("Expected to generate a prompt before sending a reward")

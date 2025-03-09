@@ -13,6 +13,11 @@ from tqdm.auto import tqdm
 from loguru import logger
 
 
+"""
+python3 -m src.scripts.experiments.inside-out-alt-topology --out_path 'data/inside_out_alt_topology_exp1.json'
+"""
+
+
 class EmotionParserAgent(Agent):
     def __init__(self, config: AgentConfig):
         super().__init__(config)
@@ -112,13 +117,13 @@ def get_inside_out_exp_pipeline_cfg():
 The evaluator will receive both the dialogue and information about which emotion they are experiencing, and must then determine the first speaker's emotion.
 
 Important: The accuracy of the evaluator's assessment depends directly on which emotions you generate. Some emotional states will help the evaluator correctly identify the first speaker's emotion, while others may hinder this task.
+You should generate emotions that are likely to be experienced by the evaluator in order to make the task easier for them. Different emotions will be experienced by different agents, and finally responses from all agents in emotion recognition task will be aggregated.
 
 Format requirements:
 - Use <EMOTION>Emotion</EMOTION> tags for each emotion
-- Example: <EMOTION>Anger</EMOTION> <EMOTION>Fear+Disgust</EMOTION>
-- Use only emotions from Ekman's basic emotion list: Anger, Disgust, Fear, Happiness, Sadness
-- You may combine two emotions with a + symbol (e.g., Fear+Disgust)
-- Generate between 2-6 distinct emotional states
+- Example: <EMOTION>Anger</EMOTION> <EMOTION>Fear</EMOTION>
+- Use only one of the 5 emotions from Ekman's basic emotion list: Anger, Disgust, Fear, Happiness, Sadness
+- Generate between 1-5 distinct emotional states, depending on the dialogue complexity
 
 Remember that your choice of emotions will significantly impact the evaluator's performance.
                         """
@@ -189,7 +194,7 @@ def parse_arguments():
     parser.add_argument('--scenarios_path', type=str,
                         default="data/synthetic_dialogues/v2/scenarios.json", help='Path to scenarios')
     parser.add_argument('--llm_config_path', type=str,
-                        default="configs/llm_generation/gpt_4o_mini_config.json", help='Path to llm config')
+                        default="configs/llm_generation/openai_gpt_4o_mini_config.json", help='Path to llm config')
     parser.add_argument('--out_path', type=str, help='Path where scenarios will be saved')
     args = parser.parse_args()
     return args
@@ -206,11 +211,11 @@ def main():
 
     pipeline = Pipeline(inside_out_pipeline_config, llm_client)
     dset = SyntheticEmotionDataset(args.dialogues_path, args.scenarios_path)
-    dset, _ = split_dataset(dset, 10)
+    dset, _ = split_dataset(dset, 200)
 
     logger.info(f"Start inference on {len(dset)} dialogues")
     result = []
-    for idx in tqdm(range(10)):
+    for idx in tqdm(range(len(dset))):
         item = dset[idx]
 
         context = AgentContext(data={"input": item.format_dialogue()})

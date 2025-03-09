@@ -51,10 +51,21 @@ class SyntheticEmotionDataset:
             )
             self.dialogues.append(dialogue)
 
-        if self._shuffle:
-            self._idxs = np.random.permutation(len(self.dialogues))
-        else:
-            self._idxs = np.arange(len(self.dialogues))
+        self._idxs = np.arange(len(self.dialogues))
+
+        if shuffle:
+            self.shuffle()
+
+    @classmethod
+    def from_list(cls, dialogues: List[Dialogue],  shuffle: bool = False) -> 'SyntheticEmotionDataset':
+        instance = cls.__new__(cls)
+        instance.dialogues = dialogues
+        instance.scenarios = {}
+        instance._shuffle = shuffle
+        instance._idxs = np.arange(len(dialogues))
+        if shuffle:
+            instance.shuffle()
+        return instance
             
     def shuffle(self):
         self._shuffle = True
@@ -77,13 +88,7 @@ def split_dataset(dataset: SyntheticEmotionDataset, size_left: int) -> Tuple[Syn
     dataset_left = copy.deepcopy(dataset)
     dataset_right = copy.deepcopy(dataset)
 
-    dataset_left.dialogues = dataset.dialogues[:size_left]
-    dataset_left._idxs = dataset._idxs[:size_left]
-    dataset_right.dialogues = dataset.dialogues[size_left:]
-    dataset_right._idxs = dataset._idxs[size_left:]
-
-    if dataset._shuffle:
-        dataset_left.shuffle()
-        dataset_right.shuffle()
+    dataset_left = SyntheticEmotionDataset.from_list(dataset.dialogues[:size_left], shuffle=dataset._shuffle)
+    dataset_right = SyntheticEmotionDataset.from_list(dataset.dialogues[size_left:], shuffle=dataset._shuffle)
     
     return dataset_left, dataset_right
