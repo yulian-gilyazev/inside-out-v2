@@ -1,6 +1,6 @@
 from .schema import AgentConfig, IOAgentConfig, AgentContext
 from src.llm_client import LLMClient
-from typing import List, Dict, Callable, Hashable
+from typing import List, Dict, Callable, Hashable, Tuple
 from abc import ABC, abstractmethod
 
 
@@ -19,8 +19,10 @@ class Agent(ABC):
     def add_previous_agent(self, agent_id: str):
         self.previous_agents.append(agent_id)
 
-    def process(self, context: AgentContext) -> (AgentContext, List[str]):
-        context = self.handle(context)
+    def process(self, context: AgentContext) -> Tuple[AgentContext, List[str]]:
+        out = self.handle(context)
+        if out is not None:
+            context.data[self.config.agent_id] = out
         return context, self.next_agents
 
     @abstractmethod
@@ -45,9 +47,8 @@ class IOAgent(Agent):
     def handle(self, context: AgentContext) -> AgentContext:
         messages = self._format_messages(context)
         response = self.llm_client.chat(messages)
-        context.data[self.config.agent_id] = response.message.content
-        return context
-
+        return response.message.content
+        
 
 class EchoAgent(Agent):
     """
@@ -57,9 +58,13 @@ class EchoAgent(Agent):
         super().__init__(config)
 
     def handle(self, context: AgentContext) -> AgentContext:
-        return context
+        return None
+
 
 class AgentFactory(ABC):
+    """
+    Factory class for creating agents.
+    """
     __classes: dict[Hashable, (Callable[..., object], Callable[..., object])] = {
         "IO": (IOAgent, IOAgentConfig),
         "Echo": (EchoAgent, AgentConfig),
