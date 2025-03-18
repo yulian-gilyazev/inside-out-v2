@@ -1,16 +1,19 @@
 import argparse
 import json
+import os
 import more_itertools
 from loguru import logger
 from tqdm.auto import tqdm
 
-from src.utils.data import SyntheticEmotionDataset, Dialogue, split_dataset
+from src.utils.data import SyntheticEmotionDataset, EmpatheticDialoguesDataset, split_dataset
 from src.schema.emotions import Emotion
 from src.scripts.experiments.gpt_swarm_optimization import *
 
 
 """ Example
-python3 -m src.scripts.experiments.run_gptswarm_erc --out_path 'data/gptswarm_agent_erc_exp2_result_gpt4o-mini.json'
+python3 -m src.scripts.experiments.run_gptswarm_erc --dataset 'synthetic' --dataset_path 'data/synthetic_dialogues/v2' --out_path 'data/gptswarm_agent_erc_exp2_result_gpt4o-mini.json'
+
+python3 -m src.scripts.experiments.run_gptswarm_erc --dataset 'empatheticdialogues' --dataset_path 'data/empatheticdialogues' --part 'test' --out_path 'data/empatheticdialogues_test_gptswarm_erc_exp2_result_gpt4o-mini.json'
 """
 
 
@@ -60,21 +63,28 @@ class GPTSwarmOptimizedERCAgent:
 def parse_arguments():
     parser = argparse.ArgumentParser()
     parser.add_argument('--agent_name', type=str, help='Name of agent')
-    parser.add_argument('--dialogues_path', type=str,
-                        default="data/synthetic_dialogues/v2/dialogues.json", help='Path to dialogues')
-    parser.add_argument('--scenarios_path', type=str,
-                        default="data/synthetic_dialogues/v2/scenarios.json", help='Path to scenarios')
+    parser.add_argument('--dataset', type=str, required=True, choices=["synthetic", "empatheticdialogues"], help='Dataset to use')
+    parser.add_argument('--dataset_path', type=str, help='Path to dataset')
+    parser.add_argument('--part', type=str, choices=["train", "dev", "test"], required=False, help='Part of dataset to use')
     parser.add_argument('--model_name', type=str,  default='gpt-4o-mini', help='Name of model')
     parser.add_argument('--out_path', type=str, help='Path where results will be saved')
     args = parser.parse_args()
+    if args.dataset == "empatheticdialogues":
+        assert args.part is not None, "Part must be specified for synthetic dataset"
     return args
 
 
 def main():
     args = parse_arguments()
 
-    dset = SyntheticEmotionDataset(args.dialogues_path, args.scenarios_path)
-    dset, _ = split_dataset(dset, 200)
+    if args.dataset == "synthetic":
+        dialogues_path = os.path.join(args.dataset_path, "dialogues.json")
+        scenarios_path = os.path.join(args.dataset_path, "scenarios.json")
+        dset = SyntheticEmotionDataset(dialogues_path, scenarios_path)
+        dset, _ = split_dataset(dset, 200)
+    elif args.dataset == "empatheticdialogues":
+        dset = EmpatheticDialoguesDataset(args.dataset_path, args.part)
+
     dialogues = [dset[i].first_messages for i in range(len(dset))]
 
     model = GPTSwarmOptimizedERCAgent(model_name=args.model_name)
