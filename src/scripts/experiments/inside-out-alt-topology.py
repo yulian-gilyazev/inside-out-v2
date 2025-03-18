@@ -1,6 +1,7 @@
 import argparse
 from dataclasses import dataclass
 import json
+import os
 from typing import List, Dict, Tuple, Any
 import re
 import copy
@@ -8,13 +9,15 @@ from src.agent import PipelineAgentConfig, AgentConfig, IOAgentConfig, Agent, Ag
 from src.agent import IOAgent
 from src.llm_client import LLMClient
 from src.schema.llm_config import LLMConfig
-from src.utils.data import SyntheticEmotionDataset, split_dataset
+from src.utils.data import SyntheticEmotionDataset, EmpatheticDialoguesDataset, split_dataset
 from tqdm.auto import tqdm
 from loguru import logger
 
 
 """
-python3 -m src.scripts.experiments.inside-out-alt-topology --out_path 'data/inside_out_alt_topology_exp1.json'
+python3 -m src.scripts.experiments.inside-out-alt-topology --dataset 'synthetic' --dataset_path 'data/synthetic_dialogues/v2' --out_path 'data/inside_out_alt_topology_exp1.json'
+
+python3 -m src.scripts.experiments.inside-out-alt-topology --dataset 'empatheticdialogues' --dataset_path 'data/empatheticdialogues' --part 'test' --out_path 'data/empatheticdialogues_test_inside_out_alt_topology_exp1.json'
 """
 
 
@@ -112,20 +115,24 @@ def get_inside_out_exp_pipeline_cfg():
                 "messages": [
                     {
                         "role": "system",
-                        "content": system_prompt + "\n\n" + """Your task is to generate emotional states for a dialogue evaluator who must accurately identify the emotion of the first speaker in a given dialogue.
+                        "content": system_prompt + "\n\n" + """Your task is to generate a set of emotional states for a dialogue evaluator. The evaluator's goal is to accurately identify the emotion of the first speaker in a given dialogue.
 
-The evaluator will receive both the dialogue and information about which emotion they are experiencing, and must then determine the first speaker's emotion.
+The evaluator will be provided with both the dialogue and the emotional states you generate. These emotional states will guide the evaluator in determining the first speaker's emotion.
 
-Important: The accuracy of the evaluator's assessment depends directly on which emotions you generate. Some emotional states will help the evaluator correctly identify the first speaker's emotion, while others may hinder this task.
-You should generate emotions that are likely to be experienced by the evaluator in order to make the task easier for them. Different emotions will be experienced by different agents, and finally responses from all agents in emotion recognition task will be aggregated.
+Key Points:
+- The accuracy of the evaluator's assessment is directly influenced by the emotional states you generate. Some emotions will aid in correctly identifying the first speaker's emotion, while others may complicate the task.
+- Generate emotions that are likely to be experienced by the evaluator, making the task easier. Different agents will experience different emotions, and the responses from all agents will be aggregated in the emotion recognition task.
+- For instance, in a conflict dialogue, it is improbable that both participants will be happy. Avoid generating emotions that could complicate the evaluator's task.
 
-Format requirements:
-- Use <EMOTION>Emotion</EMOTION> tags for each emotion
-- Example: <EMOTION>Anger</EMOTION> <EMOTION>Fear</EMOTION>
-- Use only one of the 5 emotions from Ekman's basic emotion list: Anger, Disgust, Fear, Happiness, Sadness
-- Generate between 1-5 distinct emotional states, depending on the dialogue complexity
+Format Guidelines:
+- Enclose each emotion in <EMOTION>Emotion</EMOTION> tags.
+- Use only the 5 basic emotions from Ekman's list: Anger, Disgust, Fear, Happiness, Sadness.
+- You may generate combinations of two emotions, e.g., <EMOTION>Sadness and Disgust</EMOTION>.
+- Avoid repeating the same emotion or combination of emotions.
+- Generate between 2 to 5 distinct emotional states, depending on the dialogue's complexity.
+- Example output: <EMOTION>Anger</EMOTION> <EMOTION>Fear and Anger</EMOTION> <EMOTION>Sadness</EMOTION>
 
-Remember that your choice of emotions will significantly impact the evaluator's performance.
+Keep in mind that your selection of emotions will have a significant impact on the evaluator's performance.
                         """
                     },
                     {"role": "user", "content": "Dialogue:\n{input}."},
@@ -145,7 +152,7 @@ Remember that your choice of emotions will significantly impact the evaluator's 
                     {"role": "system", "content": system_prompt + "\n" + """You feel {emotion_parser}. Act based on what emotion you are experiencing.
 You need to assess emotion of the first (A) interlocutor in the dialogue, estimate your confidence and give reasoning for your answer.
 Your answer should consist of an emotion and an assessment of the level of confidence in it in the range from 0 to 1.
-To select emotions, use Ekman's classification into 5 main emotions - Anger, Disgust, Fear, Happiness, Sadness.
+To select emotions, use Ekman's classification into 5 main emotions - Anger, Disgust, Fear, Happiness, Sadness. 
 Separate the emotion and the response using a semicolon.
 Response example:
 `Anger; 0.7`"""},
@@ -189,14 +196,15 @@ The same format is followed for agent responses."""
 
 def parse_arguments():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--dialogues_path', type=str,
-                        default="data/synthetic_dialogues/v2/dialogues.json", help='Path to dialogues ')
-    parser.add_argument('--scenarios_path', type=str,
-                        default="data/synthetic_dialogues/v2/scenarios.json", help='Path to scenarios')
+    parser.add_argument('--dataset', type=str, required=True, choices=["synthetic", "empatheticdialogues"], help='Dataset to use')
+    parser.add_argument('--dataset_path', type=str, help='Path to dataset')
+    parser.add_argument('--part', type=str, choices=["train", "dev", "test"], required=False, help='Part of dataset to use')
     parser.add_argument('--llm_config_path', type=str,
                         default="configs/llm_generation/openai_gpt_4o_mini_config.json", help='Path to llm config')
     parser.add_argument('--out_path', type=str, help='Path where scenarios will be saved')
     args = parser.parse_args()
+    if args.dataset == "empatheticdialogues":
+        assert args.part is not None, "Part must be specified for synthetic dataset"
     return args
 
 
@@ -210,8 +218,13 @@ def main():
     inside_out_pipeline_config = get_inside_out_exp_pipeline_cfg()
 
     pipeline = Pipeline(inside_out_pipeline_config, llm_client)
-    dset = SyntheticEmotionDataset(args.dialogues_path, args.scenarios_path)
-    dset, _ = split_dataset(dset, 200)
+    if args.dataset == "synthetic":
+        dialogues_path = os.path.join(args.dataset_path, "dialogues.json")
+        scenarios_path = os.path.join(args.dataset_path, "scenarios.json")
+        dset = SyntheticEmotionDataset(dialogues_path, scenarios_path)
+        dset, _ = split_dataset(dset, 200)
+    elif args.dataset == "empatheticdialogues":
+        dset = EmpatheticDialoguesDataset(args.dataset_path, args.part)
 
     logger.info(f"Start inference on {len(dset)} dialogues")
     result = []

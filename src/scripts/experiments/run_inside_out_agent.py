@@ -1,30 +1,33 @@
 import argparse
 import json
+import os
 from loguru import logger
 from tqdm.auto import tqdm
 
 from src.agent import Pipeline, AgentContext, registry
 from src.llm_client import LLMClient
 from src.schema.llm_config import LLMConfig
-from src.utils.data import SyntheticEmotionDataset
+from src.utils.data import SyntheticEmotionDataset, EmpatheticDialoguesDataset
 
 """ Example
-python3 -m src.scripts.experiments.run_inside_out_agent --agent_name 'inside-out-erc' \
-    --out_path 'data/inside_out_erc_results.json'
+python3 -m src.scripts.experiments.run_inside_out_agent --agent_name 'inside-out-erc' --dataset 'synthetic' --dataset_path 'data/synthetic_dialogues/v2' --out_path 'data/inside_out_erc_results.json'
+
+python3 -m src.scripts.experiments.run_inside_out_agent --agent_name 'inside-out-erc' --dataset 'empatheticdialogues' --dataset_path 'data/empatheticdialogues' --part 'test' --out_path 'data/empatheticdialogues_test_inside_out_erc_results.json'
 """
 
 
 def parse_arguments():
     parser = argparse.ArgumentParser()
     parser.add_argument('--agent_name', type=str, help='Name of agent')
-    parser.add_argument('--dialogues_path', type=str,
-                        default="data/synthetic_dialogues/v2/dialogues.json", help='Path to dialogues ')
-    parser.add_argument('--scenarios_path', type=str,
-                        default="data/synthetic_dialogues/v2/scenarios.json", help='Path to scenarios')
+    parser.add_argument('--dataset', type=str, choices=["synthetic", "empatheticdialogues"], help='Dataset to use')
+    parser.add_argument('--dataset_path', type=str, help='Path to dataset')
+    parser.add_argument('--part', type=str, choices=["train", "dev", "test"], required=False, help='Part of dataset to use')
     parser.add_argument('--llm_config_path', type=str,
-                        default="configs/llm_generation/gpt_4o_mini_config.json", help='Path to llm config')
-    parser.add_argument('--out_path', type=str, help='Path where scenarios will be saved')
+                        default="configs/llm_generation/openai_gpt_4o_mini_config.json", help='Path to llm config')
+    parser.add_argument('--out_path', type=str, help='Path where results will be saved')
     args = parser.parse_args()
+    if args.dataset == "empatheticdialogues":
+       assert args.part is not None, "Part must be specified for synthetic dataset"
     return args
 
 
@@ -38,12 +41,16 @@ def main():
     inside_out_pipeline_config = registry.get_config(args.agent_name)
 
     pipeline = Pipeline(inside_out_pipeline_config, llm_client)
-    dset = SyntheticEmotionDataset(args.dialogues_path, args.scenarios_path)
+    if args.dataset == "synthetic":
+        dialogues_path = os.path.join(args.dataset_path, "dialogues.json")
+        scenarios_path = os.path.join(args.dataset_path, "scenarios.json")
+        dset = SyntheticEmotionDataset(dialogues_path, scenarios_path)
+    elif args.dataset == "empatheticdialogues":
+        dset = EmpatheticDialoguesDataset(args.dataset_path, args.part)
 
     logger.info(f"Start inference on {len(dset)} dialogues")
     result = []
-    for idx in tqdm(range(200)):
-        item = dset[idx]
+    for item in tqdm(dset):
 
         context = AgentContext(data={"input": item.format_dialogue()})
 

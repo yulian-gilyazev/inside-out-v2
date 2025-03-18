@@ -40,7 +40,7 @@ def check_config(config: str) -> bool:
 opro_metaprompt = """You are an AI assistant specializing in optimizing multi-agent pipelines for emotion classification.
 
 ## Task Description
-Optimize a Emotion Recognition multi-agent pipeline for the emotion classification task. Pipeline should be able to classify the emotion of the first (A) interlocutor in the dialogue into one of the following emotions, and give a confidence score for the prediction:
+Optimize an Emotion Recognition multi-agent pipeline for emotion classification tasks. The pipeline must accurately classify the emotion of the first (A) interlocutor in dialogues into one of the following categories, along with a confidence score:
 - Anger
 - Disgust
 - Fear
@@ -48,33 +48,38 @@ Optimize a Emotion Recognition multi-agent pipeline for the emotion classificati
 - Sadness
 
 ## Pipeline Specifications
-- Based on LLM
-- Utilizes agent communication between LLM calls
+- Powered by Large Language Models (LLMs)
+- Leverages inter-agent communication between LLM calls for enhanced performance
 
 ## Input
-- Pipeline configuration in json format
-- Previous prompt examples with accuracy evaluations (0 to 1 scale)
+- Historical pipeline configuration examples in JSON format with accuracy metrics (scale: 0 to 1), in format:
+```
+<CONFIG>{config}</CONFIG> 
+accuracy: {accuracy}
+```
 
 ## Modification Scope
 You may modify:
-- `messages` in `agent_configs`
-- Be careful with template variables, they are not allowed to be changed, because they are used in the pipeline to pass the dialogue and other information to the agents
+- `messages` fields within `agent_configs`
+- IMPORTANT: Do not alter template variables (e.g., {input}, {anger_agent}, {aggregator}) as they are essential for passing information between agents
+- IMPORTANT: Do not change the number of agents, and idea of agent system. You can only change prompts, but idea of agents should be the same.
 
-You must maintain:
-- Core pipeline structure
-- Basic functionality
-- Main architectural components
+## Requirements
+You must preserve:
+- The fundamental pipeline architecture
+- Core functionality and processing flow
+- Key architectural components and their relationships
 
-## Important Notes
-- Preserve the pipeline's working structure
-- Focus on metric improvements
-- Consider previous high-scoring examples
-- Maintain proper JSON formatting
+## Critical Guidelines
+- Maintain the working structure of the pipeline
+- Prioritize accuracy metric improvements
+- Analyze previous high-performing examples for insights
+- Ensure valid and properly formatted JSON output
 
-Return optimized pipeline configuration <CONFIG> in JSON format with improved classification metric.
+Return your optimized pipeline configuration within <CONFIG> tags in valid JSON format, designed to maximize classification accuracy.
 """
 
-task_prompt = """Generate a configuration that exceeds the quality and score of all previous configs. Return only the configuration, nothing else, and separate it from the rest of the text with <CONFIG>...</CONFIG>."""
+task_prompt = """Analyze previous configurations and create an optimized version that outperforms all prior examples in terms of quality and accuracy scores. Focus on refining agent interactions and prompt engineering to maximize emotion classification performance. Your response must contain ONLY the configuration JSON, enclosed within <CONFIG> and </CONFIG> tags. Do not include any explanations, comments, or additional text outside these tags."""
 
 
 def accuracy(gt, pred):
@@ -123,7 +128,7 @@ def main(config: ExperimentConfig):
 
     logger = Logger(
         group="inside-out-v1-prompt-optimization",
-        run_name="run_1",
+        run_name="run_3",
         tags=["inside-out-v1", "erc"],
         config=config.to_dict(),
         use_wandb=True,
@@ -169,6 +174,8 @@ def main(config: ExperimentConfig):
             artifact = logger.wandb.Artifact(name=f"config_{step}", type="dataset")
             artifact.add_file(cfg_path)
             logger.run.log_artifact(artifact)
+            logger.info(f"Config {step} saved")
+            logger.info(f"Config: \n{pipeline_cofig_str}")
     
 
     logger.info(f"Completion tokens: {llm_client.get_output_tokens().sum()}")
