@@ -5,7 +5,7 @@ import more_itertools
 from loguru import logger
 from tqdm.auto import tqdm
 
-from src.utils.data import SyntheticEmotionDataset, EmpatheticDialoguesDataset, split_dataset
+from src.utils.data import SyntheticEmotionDataset, EmpatheticDialoguesDataset, split_dataset, Dialogue
 from src.schema.emotions import Emotion
 from src.scripts.experiments.gpt_swarm_optimization import *
 
