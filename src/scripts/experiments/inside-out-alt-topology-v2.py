@@ -161,7 +161,7 @@ Format Guidelines:
 - Use only the 5 basic emotions from Ekman's list: Anger, Disgust, Fear, Happiness, Sadness.
 - You may generate combinations of two emotions, e.g., <EMOTION>Sadness and Disgust</EMOTION>.
 - Avoid repeating the same emotion or combination of emotions.
-- Generate between 1 to 3 distinct emotional states, depending on the dialogue's complexity.
+- Generate between 2 to 5 distinct emotional states, depending on the dialogue's complexity.
 - Example output: <EMOTION>Anger</EMOTION> <EMOTION>Fear and Anger</EMOTION> <EMOTION>Sadness</EMOTION>
 
 Keep in mind that your selection of emotions will have a significant impact on the evaluator's performance.
@@ -206,32 +206,15 @@ To select emotions, use Ekman's classification into 5 main emotions - Anger, Dis
 Separate the emotion and the response using a semicolon.
 Response example:
 `Anger; 0.7`"""},
-                     {"role": "user", "content": """Using the solutions from other emotional agents as additional information, can you give an updated response. 
-                      {inside_out_agents_debate_round1_concated}\n\n Dialogue:\n{input}."""}
-                ]
-            },
-            {
-                "agent_type": "MultipleIOFromTemplateDebate",
-                "agent_id": "inside_out_agents_debate_round2",
-                "input_id": "emotion_parser",
-                "previous_results_id": "inside_out_agents_debate_round1",
-                "previous_results_concated_id": "inside_out_agents_debate_round2_concated",
-                "messages": [
-                    {"role": "system", "content": system_prompt + "\n" + """You feel {emotion_parser}. Act based on what emotion you are experiencing.
-You need to assess emotion of the first (A) interlocutor in the dialogue, estimate your confidence and give reasoning for your answer.
-Your answer should consist of an emotion and an assessment of the level of confidence in it in the range from 0 to 1.
-To select emotions, use Ekman's classification into 5 main emotions - Anger, Disgust, Fear, Happiness, Sadness. 
-Separate the emotion and the response using a semicolon.
-Response example:
-`Anger; 0.7`"""},
-                     {"role": "user", "content": """Using the solutions from other emotional agents as additional information, can you give an updated response. 
-                      {inside_out_agents_debate_round2_concated}\n\n Dialogue:\n{input}."""}
+                     {"role": "user", "content": """You will also be given the responses from other emotional agents and your own response from the previous round of debate. This information will help you give your answer more confidently.
+Using the solutions from other emotional agents (each agent has the same task as you, but feels different emotions) and your own response from the previous round of debate as additional information, give a response. 
+Emotional agents responses:\n{inside_out_agents_debate_round1_concated}\n\n\n Dialogue:\n{input}."""}
                 ]
             },
             {
                 "agent_type": "ListConcatenator",
                 "agent_id": "inside_out_concatenator",
-                "input_id": "inside_out_agents_debate_round2",
+                "input_id": "inside_out_agents_debate_round1",
                 "separator": "\n* "
             },
             {
@@ -260,8 +243,7 @@ The same format is followed for agent responses."""
                ("emotions_generator", "emotion_parser"), 
                ("emotion_parser", "inside_out_agents"), 
                ("inside_out_agents", "inside_out_agents_debate_round1"),
-               ("inside_out_agents_debate_round1", "inside_out_agents_debate_round2"),
-               ("inside_out_agents_debate_round2", "inside_out_concatenator"), 
+               ("inside_out_agents_debate_round1", "inside_out_concatenator"), 
                ("inside_out_concatenator", "aggregator")],
         input_id="input",
         output_id="aggregator",
@@ -275,7 +257,7 @@ def parse_arguments():
     parser.add_argument('--dataset_path', type=str, help='Path to dataset')
     parser.add_argument('--part', type=str, choices=["train", "dev", "test"], required=False, help='Part of dataset to use')
     parser.add_argument('--llm_config_path', type=str,
-                        default="configs/llm_generation/openai_gpt_4o_mini_config.json", help='Path to llm config')
+                        default="configs/llm_generation/gpt_4o_mini_config.json", help='Path to llm config')
     parser.add_argument('--out_path', type=str, help='Path where scenarios will be saved')
     args = parser.parse_args()
     if args.dataset == "empatheticdialogues":

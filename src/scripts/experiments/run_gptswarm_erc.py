@@ -7,7 +7,7 @@ from tqdm.auto import tqdm
 
 from src.utils.data import SyntheticEmotionDataset, EmpatheticDialoguesDataset, split_dataset, Dialogue
 from src.schema.emotions import Emotion
-from src.scripts.experiments.gpt_swarm_optimization import *
+from src.scripts.experiments.gpt_swarm_erc_optimization import *
 
 
 """ Example

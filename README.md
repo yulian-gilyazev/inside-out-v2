@@ -66,6 +66,7 @@ Exp logs:
 The table above shows the performance comparison of different emotion recognition in conversation (ERC) approaches on our synthetic dialogue dataset:
 
 
-|   | BERT Baseline| Inside-Out | GPTSwarm | GPTSwarm random |
-|:---|:-------------|:-------------|:-------------|:-------------|
-| accuracy| 0.645    | 0.735    | 0.8   | 0.625   |
+|   | BERT Baseline| Inside-Out | Inside-Out Generated Emotions | Inside-Out Generated Emotions + Debate| GPTSwarm | GPTSwarm random |
+|:---|:-------------|:-------------|:-------------|:-------------|:-------------|:-------------|
+| synthetic data| 0.645    | 0.735    | 0.745  |  0.73    |    0.8   | 0.625   |
+| empathetic dialogues| 0.7673    | 0.8157    | 0.8096   |  -    |   -   | -   |
