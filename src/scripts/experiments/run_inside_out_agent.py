@@ -22,12 +22,16 @@ def parse_arguments():
     parser.add_argument('--dataset', type=str, choices=["synthetic", "empatheticdialogues"], help='Dataset to use')
     parser.add_argument('--dataset_path', type=str, help='Path to dataset')
     parser.add_argument('--part', type=str, choices=["train", "dev", "test"], required=False, help='Part of dataset to use')
+    parser.add_argument('--emotions_set', type=str, choices=["base", "extended"], default="base", help='Emotions set to use')
     parser.add_argument('--llm_config_path', type=str,
                         default="configs/llm_generation/openai_gpt_4o_mini_config.json", help='Path to llm config')
     parser.add_argument('--out_path', type=str, help='Path where results will be saved')
     args = parser.parse_args()
     if args.dataset == "empatheticdialogues":
        assert args.part is not None, "Part must be specified for synthetic dataset"
+       assert args.emotions_set is not None, "Emotions set must be specified for empatheticdialogues dataset"
+    if args.dataset == "synthetic":
+        assert args.emotions_set == "base", "Emotions set must be either base or extended for synthetic dataset"
     return args
 
 
@@ -46,7 +50,8 @@ def main():
         scenarios_path = os.path.join(args.dataset_path, "scenarios.json")
         dset = SyntheticEmotionDataset(dialogues_path, scenarios_path)
     elif args.dataset == "empatheticdialogues":
-        dset = EmpatheticDialoguesDataset(args.dataset_path, args.part)
+        dset = EmpatheticDialoguesDataset(args.dataset_path, args.part, extended=args.emotions_set == "extended")
+        
 
     logger.info(f"Start inference on {len(dset)} dialogues")
     result = []

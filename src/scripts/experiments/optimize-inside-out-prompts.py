@@ -1,14 +1,15 @@
 import json
 import tempfile
 import numpy as np
+import os
 from src.utils.logger import Logger
 from src.models.opro import OPRO
-from src.utils.data import SyntheticEmotionDataset, split_dataset
+from src.utils.data import SyntheticEmotionDataset, EmpatheticDialoguesDataset, split_dataset
 from src.schema.llm_config import LLMConfig
 from src.llm_client import LLMClient
 from src.agent.pipeline import PipelineAgentConfig, Pipeline, AgentContext
 from dataclasses import dataclass, asdict
-from typing import Dict, Any
+from typing import Dict, Any, Literal
 from tqdm import tqdm
 
 """Запуск
@@ -16,6 +17,7 @@ python3 -m src.scripts.experiments.optimize-inside-out-prompts
 """
 
 def check_config(config: str) -> bool:
+    """Simple check if the config is valid"""
     try:
         config = json.loads(config)
     except json.JSONDecodeError:
@@ -91,10 +93,13 @@ def accuracy(gt, pred):
 class ExperimentConfig:
     llm_config_path: str = "configs/llm_generation/openai_gpt_4o_mini_config.json"
     llm_prompt_searcher_config_path: str = "configs/llm_generation/openai_gpt_4o_config.json"
-    dialogues_path: str = "data/synthetic_dialogues/v2/dialogues.json"
-    scenarios_path: str = "data/synthetic_dialogues/v2/scenarios.json"
+    dataset: Literal["empatheticdialogues", "synthetic"] = "empatheticdialogues"
+    dataset_path: str = "data/empatheticdialogues"
+    emotions_set: Literal["base", "extended"] = "extended"
     initial_config_path: str = "src/scripts/experiments/inside-out-v1-base-config.json"
-    n_iters: int = 14
+    n_iters: int = 15
+    test_size: int = 200
+    train_size: int = 200
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
@@ -126,6 +131,7 @@ def main(config: ExperimentConfig):
     with open(config.initial_config_path, "r") as f:
         pipeline_cofig_str = f.read()
 
+
     logger = Logger(
         group="inside-out-v1-prompt-optimization",
         run_name="run_3",
@@ -134,10 +140,17 @@ def main(config: ExperimentConfig):
         use_wandb=True,
     )
 
-    dset = SyntheticEmotionDataset(config.dialogues_path, config.scenarios_path)
-    dset_test, dset = split_dataset(dset, 200)
-    dset_train, _ = split_dataset(dset, 200)
-
+    if config.dataset == "synthetic":
+        dset = SyntheticEmotionDataset(os.path.join(config.dataset_path, "dialogues.json"), os.path.join(config.dataset_path, "scenarios.json"))
+        dset_test, dset = split_dataset(dset, config.test_size)
+        dset_test.shuffle()
+        dset_train, _ = split_dataset(dset, config.train_size)
+    elif config.dataset == "empatheticdialogues":
+        dset_test = EmpatheticDialoguesDataset(config.dataset_path, part="test", extended=config.emotions_set == "extended")
+        dset_test, _ = split_dataset(dset_test, config.test_size)
+        dset_test.shuffle()
+        dset_train = EmpatheticDialoguesDataset(config.dataset_path, part="train", extended=config.emotions_set == "extended")
+        dset_train, _ = split_dataset(dset_train, config.train_size)
 
     logger.info(f"Start OPRO optimization")
     optimizer = OPRO(llm_prompt_searcher, "accuracy", opro_metaprompt, task_prompt, check_fn=check_config, prompt_tokens=("<CONFIG>", "</CONFIG>"), logger=logger)
@@ -177,11 +190,21 @@ def main(config: ExperimentConfig):
             logger.info(f"Config {step} saved")
             logger.info(f"Config: \n{pipeline_cofig_str}")
     
-
     logger.info(f"Completion tokens: {llm_client.get_output_tokens().sum()}")
     logger.info(f"Prompt tokens: {llm_client.get_input_tokens().sum()}")
     logger.info(f"Generation cost: {llm_client.get_generations_cost()}")
 
 
 if __name__ == "__main__":
-    main(ExperimentConfig())
+    config = ExperimentConfig(
+        llm_config_path="configs/llm_generation/openai_gpt_4o_mini_config.json",
+        llm_prompt_searcher_config_path="configs/llm_generation/openai_gpt_4o_config.json",
+        dataset="empatheticdialogues",
+        dataset_path="data/empatheticdialogues",
+        emotions_set="extended",
+        initial_config_path="src/scripts/experiments/inside-out-v1-base-extended-emotions-config.json",
+        n_iters=15,
+        test_size=200,
+        train_size=200,
+    )
+    main(config)

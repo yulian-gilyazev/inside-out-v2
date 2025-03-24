@@ -175,7 +175,7 @@ class OptimizationConfig:
 
 
 class Optimizer:
-    evaluation_n_steps = 40
+    evaluation_n_steps = 60
 
     def __init__(
         self, swarm, train_dataset: SyntheticEmotionDataset,
@@ -378,7 +378,7 @@ class TrainConfig:
     dataset: Literal["empatheticdialogues", "synthetic"] = "empatheticdialogues"
     dataset_path: str = "data/empatheticdialogues"
     emotions_set: Literal["base", "extended"] = "extended"
-    test_size: int = 200
+    test_size: int = 300
     model_name: str = "gpt-4o-mini"
 
     def to_dict(self) -> Dict[str, Any]:
