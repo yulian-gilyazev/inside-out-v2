@@ -135,7 +135,7 @@ def main(config: ExperimentConfig):
 
     logger = Logger(
         group="inside-out-v1-prompt-optimization",
-        run_name="run_3",
+        run_name="run_empatheticdialogues_extended_all",
         tags=["inside-out-v1", "erc"],
         config=config.to_dict(),
         use_wandb=True,
@@ -205,8 +205,8 @@ if __name__ == "__main__":
         emotions_set="extended",
         initial_config_path="src/scripts/experiments/inside-out-v1-base-extended-emotions-config.json",
         n_iters=15,
-        test_size=200,
-        train_size=200,
-        opro_memory_strategy="last",
+        test_size=300,
+        train_size=300,
+        opro_memory_strategy="all",
     )
     main(config)

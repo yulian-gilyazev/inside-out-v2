@@ -62,7 +62,7 @@ def parse_arguments():
     parser.add_argument('--emotions_set', type=str, choices=["base", "extended"], default="base", help='Emotions set to use')
     parser.add_argument('--edge_prob_threshold', type=float, default=0.5, help='Edge probability threshold')
     parser.add_argument('--path_to_edge_probs', type=str, default="models/gptswarm_erc_edge_probs_tensor.pt", help='Path to edge probabilities')
-    parser.add_argument('--test_size', type=int, default=200, help='Test size')
+    parser.add_argument('--test_size', type=int, default=300, help='Test size')
     parser.add_argument('--out_path', type=str, help='Path where results will be saved')
     args = parser.parse_args()
     if args.dataset == "empatheticdialogues":

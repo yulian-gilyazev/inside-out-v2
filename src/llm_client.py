@@ -6,6 +6,9 @@ from openai import OpenAI, ChatCompletion
 from loguru import logger
 import traceback
 
+from transformers import AutoModelForCausalLM, AutoTokenizer
+import torch
+
 from src.schema.llm_config import LLMConfig
 
 
@@ -119,3 +122,39 @@ class DialogueManager:
             client = self.client2
         message = client.chat(history).message
         return message.content
+
+
+class LLMCausalProbabilityClient:
+    def __init__(self, model_name: str):
+        self.model = AutoModelForCausalLM.from_pretrained(model_name)
+        self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+
+    def log_prob_of_text(self, prompt_messages: List[Dict[str, str]], text: str) -> float:
+        messages = prompt_messages + [{"role": "assistant", "content": text}]
+        chat = self.tokenizer.apply_chat_template(messages, tokenize=False)
+        input_ids = self.tokenizer.encode(chat, return_tensors="pt")
+
+        prompt_chat = self.tokenizer.apply_chat_template(prompt_messages, tokenize=False)
+        prompt_tokens = self.tokenizer.encode(prompt_chat, return_tensors="pt")
+
+        with torch.no_grad():
+            outputs = self.model(input_ids)
+            logits = outputs.logits
+        
+        log_probabilities = []
+    
+        prompt_length = prompt_tokens.shape[1]
+        
+        for i in range(prompt_length - 1, input_ids.shape[1] - 1):
+            next_token_logits = logits[0, i]
+            next_token_id = input_ids[0, i + 1]
+            
+            probs = torch.nn.functional.softmax(next_token_logits, dim=0)
+            log_prob = torch.log(probs[next_token_id]).item()
+            log_probabilities.append(log_prob)
+        
+        total_log_prob = sum(log_probabilities)
+        
+        probability = float(np.exp(total_log_prob))
+        return {"total_log_prob": total_log_prob.item(), "length": len(log_probabilities), "log_probabilities": np.array(log_probabilities)}
+    
