@@ -12,7 +12,7 @@ from dataclasses import dataclass, asdict
 from typing import Dict, Any, Literal
 from tqdm import tqdm
 
-"""Запуск
+"""Run
 python3 -m src.scripts.experiments.optimize-inside-out-prompts
 """
 
@@ -100,6 +100,7 @@ class ExperimentConfig:
     n_iters: int = 15
     test_size: int = 200
     train_size: int = 200
+    opro_memory_strategy: Literal["last", "all", "ascending_subsequence"] = "all"
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
@@ -153,7 +154,7 @@ def main(config: ExperimentConfig):
         dset_train, _ = split_dataset(dset_train, config.train_size)
 
     logger.info(f"Start OPRO optimization")
-    optimizer = OPRO(llm_prompt_searcher, "accuracy", opro_metaprompt, task_prompt, check_fn=check_config, prompt_tokens=("<CONFIG>", "</CONFIG>"), logger=logger)
+    optimizer = OPRO(llm_prompt_searcher, "accuracy", opro_metaprompt, task_prompt, check_fn=check_config, prompt_tokens=("<CONFIG>", "</CONFIG>"), memory_strategy=config.opro_memory_strategy, logger=logger)
 
     for step in tqdm(range(config.n_iters)):
         pipeline_cfg = PipelineAgentConfig(**json.loads(pipeline_cofig_str))
@@ -206,5 +207,6 @@ if __name__ == "__main__":
         n_iters=15,
         test_size=200,
         train_size=200,
+        opro_memory_strategy="last",
     )
     main(config)

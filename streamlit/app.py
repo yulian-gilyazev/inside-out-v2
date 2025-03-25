@@ -30,7 +30,7 @@ class BaseERCModel(BaseModel):
             return None
 
     @abstractmethod
-    def __call__(dialogue: Dialogue): -> Optional[Emotion]:
+    def __call__(dialogue: Dialogue) -> Optional[Emotion]:
         raise NotImplementedError
 
 

@@ -7,12 +7,18 @@ from tqdm.auto import tqdm
 from src.agent import Pipeline, AgentContext, registry
 from src.llm_client import LLMClient
 from src.schema.llm_config import LLMConfig
-from src.utils.data import SyntheticEmotionDataset, EmpatheticDialoguesDataset
+from src.utils.data import SyntheticEmotionDataset, EmpatheticDialoguesDataset, split_dataset
 
 """ Example
-python3 -m src.scripts.experiments.run_inside_out_agent --agent_name 'inside-out-erc' --dataset 'synthetic' --dataset_path 'data/synthetic_dialogues/v2' --out_path 'data/inside_out_erc_results.json'
+python3 -m src.scripts.experiments.run_inside_out_agent --agent_name 'inside-out-erc' --dataset 'synthetic' \
+      --dataset_path 'data/synthetic_dialogues/v2' --out_path 'data/inside_out_erc_results.json'
 
-python3 -m src.scripts.experiments.run_inside_out_agent --agent_name 'inside-out-erc' --dataset 'empatheticdialogues' --dataset_path 'data/empatheticdialogues' --part 'test' --out_path 'data/empatheticdialogues_test_inside_out_erc_results.json'
+python3 -m src.scripts.experiments.run_inside_out_agent --agent_name 'inside-out-erc' --dataset 'empatheticdialogues' \
+      --dataset_path 'data/empatheticdialogues' --part 'test' --out_path 'data/empatheticdialogues_test_inside_out_erc_results.json'
+
+python3 -m src.scripts.experiments.run_inside_out_agent --agent_name 'inside-out-erc-extended-emotions' --dataset 'empatheticdialogues' \
+      --dataset_path 'data/empatheticdialogues' --part 'test' --emotions_set 'extended' \
+      --out_path 'data/empatheticdialogues_test_inside_out_erc_extended_emotions_results.json'
 """
 
 
@@ -23,6 +29,7 @@ def parse_arguments():
     parser.add_argument('--dataset_path', type=str, help='Path to dataset')
     parser.add_argument('--part', type=str, choices=["train", "dev", "test"], required=False, help='Part of dataset to use')
     parser.add_argument('--emotions_set', type=str, choices=["base", "extended"], default="base", help='Emotions set to use')
+    parser.add_argument('--test_size', type=int, default=300, help='Number of dialogues to use for testing')
     parser.add_argument('--llm_config_path', type=str,
                         default="configs/llm_generation/openai_gpt_4o_mini_config.json", help='Path to llm config')
     parser.add_argument('--out_path', type=str, help='Path where results will be saved')
@@ -51,8 +58,9 @@ def main():
         dset = SyntheticEmotionDataset(dialogues_path, scenarios_path)
     elif args.dataset == "empatheticdialogues":
         dset = EmpatheticDialoguesDataset(args.dataset_path, args.part, extended=args.emotions_set == "extended")
+    
+    dset, _ = split_dataset(dset, args.test_size)
         
-
     logger.info(f"Start inference on {len(dset)} dialogues")
     result = []
     for item in tqdm(dset):
