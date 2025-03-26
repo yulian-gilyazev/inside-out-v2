@@ -60,13 +60,24 @@ python3 -m src.scripts.experiments.gpt_swarm_optimization
 ## Results
 
 Exp logs:
-* [GPTSwarm ERC](https://wandb.ai/yulian-gilyazev/inside-out-v2/runs/fpcdgcor?nw=nwuseryuliangilyazev)
-
+* [Synthetic dataset GPTSwarm ERC](https://wandb.ai/yulian-gilyazev/inside-out-v2/runs/fpcdgcor?nw=nwuseryuliangilyazev)
+* [Synthetic dataset OPRO ERC](https://wandb.ai/yulian-gilyazev/inside-out-v2/runs/igxatdrq?nw=nwuseryuliangilyazev)
+* [Empathetic Dialogues GPTSwarm ERC](https://wandb.ai/yulian-gilyazev/inside-out-v2/runs/kx93b0aj?nw=nwuseryuliangilyazev)
+* [Empathetic Dialogues OPRO ERC](https://wandb.ai/yulian-gilyazev/inside-out-v2/runs/aj8pm68s?nw=nwuseryuliangilyazev)
 
 The table above shows the performance comparison of different emotion recognition in conversation (ERC) approaches on our synthetic dialogue dataset:
 
 
-|   | BERT Baseline| Inside-Out | Inside-Out Generated Emotions | Inside-Out Generated Emotions + Debate| GPTSwarm | GPTSwarm random |
-|:---|:-------------|:-------------|:-------------|:-------------|:-------------|:-------------|
-| synthetic data| 0.645    | 0.735    | 0.745  |  0.73    |    0.8   | 0.625   |
-| empathetic dialogues| 0.7673    | 0.8157    | 0.8096   |  -    |   -   | -   |
+**Table 1: Performance on Ekman's 5 Basic Emotions**
+
+|   | BERT Baseline| Inside-Out | Inside-Out Generated Emotions | Inside-Out Generated Emotions + Debate| GPTSwarm | GPTSwarm rand |OPRO |
+|:---|:-------------|:-------------|:-------------|:-------------|:-------------|:-------------|:-------------|
+| synthetic data| 0.645    | 0.735    | 0.745  |  0.73    |   0.8  | 0.625  | 0.755  |
+| empathetic dialogues| 0.7673    | 0.8157    | 0.8096   |  -    |   0.78   | -  | -  |
+
+
+**Table 2: Performance on Extended Emotions Set (32 emotions)**
+
+|   | Inside-Out | GPTSwarm | GPTSwarm random |
+|:---|:-------------|:-------------|:-------------|
+| empathetic dialogues| 0.215   | 0.233   | 0.123  |

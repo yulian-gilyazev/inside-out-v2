@@ -124,13 +124,17 @@ class DialogueManager:
         return message.content
 
 
-class LLMCausalProbabilityClient:
-    def __init__(self, model_name: str):
-        self.model = AutoModelForCausalLM.from_pretrained(model_name)
+class LLMConditionalProbabilityClient:
+    def __init__(self, model_name: str, device: str):
+        self.model = AutoModelForCausalLM.from_pretrained(model_name).to(device)
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+        self.device = device
 
-    def log_prob_of_text(self, prompt_messages: List[Dict[str, str]], text: str) -> float:
-        messages = prompt_messages + [{"role": "assistant", "content": text}]
+    def conditional_log_prob_of_completion(self, prompt_messages: List[Dict[str, str]], completion: str) -> float:
+        """
+        Calculate the log probability of a completion given a prompt.
+        """
+        messages = prompt_messages + [{"role": "assistant", "content": completion}]
         chat = self.tokenizer.apply_chat_template(messages, tokenize=False)
         input_ids = self.tokenizer.encode(chat, return_tensors="pt")
 
@@ -138,7 +142,7 @@ class LLMCausalProbabilityClient:
         prompt_tokens = self.tokenizer.encode(prompt_chat, return_tensors="pt")
 
         with torch.no_grad():
-            outputs = self.model(input_ids)
+            outputs = self.model(input_ids.to(self.device))
             logits = outputs.logits
         
         log_probabilities = []
@@ -155,5 +159,4 @@ class LLMCausalProbabilityClient:
         
         total_log_prob = sum(log_probabilities)
         
-        return {"total_log_prob": total_log_prob.item(), "length": len(log_probabilities), "log_probabilities": np.array(log_probabilities)}
-    
+        return {"total_log_prob": total_log_prob, "length": len(log_probabilities), "log_probabilities": np.array(log_probabilities)}

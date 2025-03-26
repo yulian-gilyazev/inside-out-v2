@@ -2,6 +2,7 @@ from src.llm_client import LLMCausalProbabilityClient
 from typing import List, Dict
 import numpy as np
 
+
 def log_prob_of_completion(llm_causal_probability_client: LLMCausalProbabilityClient, prompt_messages: List[Dict[str, str]], completion: str) -> float:
     """
     Calculate the log probability of a completion.
@@ -31,21 +32,14 @@ def dpo_loss(total_log_probabilities_anchor: np.ndarray, total_log_probabilities
     """
     return -total_log_probabilities_anchor + total_log_probabilities_negative
 
-def accuracy_at_k(total_log_probabilities_anchor: np.ndarray, total_log_probabilities_negative_samples: np.ndarray):
+
+def pass_at_k(total_log_probabilities_anchor: np.ndarray, total_log_probabilities_negative_samples: np.ndarray, k: int):
     """
-    Calculate the accuracy at k between two sets of log probabilities.
+    Calculate the pass at k.
     """
     all_probabilities = np.concatenate([[total_log_probabilities_anchor], total_log_probabilities_negative_samples])
     
     sorted_indices = np.argsort(-all_probabilities)
     
     anchor_position = np.where(sorted_indices == 0)[0][0]
-    return anchor_position
-
-def acc_at_k_position_weighted(log_probabilities_anchor: np.ndarray, log_probabilities_negative: np.ndarray, k: int):
-    """
-    Calculate the accuracy at k between two sets of log probabilities.
-    """
-    return np.sum(log_probabilities_anchor[:k]) > np.sum(log_probabilities_negative[:k])
-
-
+    return anchor_position <= k
