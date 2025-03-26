@@ -75,9 +75,7 @@ The table above shows the performance comparison of different emotion recognitio
 | synthetic data| 0.645    | 0.735    | 0.745  |  0.73    |   0.8  | 0.625  | 0.755  |
 | empathetic dialogues| 0.7673    | 0.8157    | 0.8096   |  -    |   0.78   | -  | -  |
 
-
 **Table 2: Performance on Extended Emotions Set (32 emotions)**
-|   | Model | Inside-Out | GPTSwarm | GPTSwarm random |
+|   |  | Inside-Out | GPTSwarm | GPTSwarm random |
 |:---|:-------------|:-------------|:-------------|:-------------|
-| empathetic dialogues| gpt-4o-mini | 0.215   | 0.233   | 0.123  |
-| empathetic dialogues| gpt-4o |  0.4133  |  0.4067  |  - |
+| empathetic dialogues | gpt-4o-mini<br>gpt-4o | 0.215<br>0.4133 | 0.233<br>0.4067 | 0.123<br>- |
