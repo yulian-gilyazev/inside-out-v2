@@ -9,6 +9,7 @@ from src.llm_client import LLMClient
 from src.schema.llm_config import LLMConfig
 from src.utils.data import SyntheticEmotionDataset, EmpatheticDialoguesDataset, split_dataset
 
+
 """ Example
 python3 -m src.scripts.experiments.run_inside_out_agent --agent_name 'inside-out-erc' --dataset 'synthetic' \
       --dataset_path 'data/synthetic_dialogues/v2' --out_path 'data/inside_out_erc_results.json'
@@ -18,7 +19,7 @@ python3 -m src.scripts.experiments.run_inside_out_agent --agent_name 'inside-out
 
 python3 -m src.scripts.experiments.run_inside_out_agent --agent_name 'inside-out-erc-extended-emotions' --dataset 'empatheticdialogues' \
       --dataset_path 'data/empatheticdialogues' --part 'test' --emotions_set 'extended' \
-      --out_path 'data/empatheticdialogues_test_inside_out_erc_extended_emotions_results.json'
+      --out_path 'data/empatheticdialogues_test_inside_out_erc_extended_emotions_results_gpt4o.json'
 """
 
 
@@ -31,7 +32,7 @@ def parse_arguments():
     parser.add_argument('--emotions_set', type=str, choices=["base", "extended"], default="base", help='Emotions set to use')
     parser.add_argument('--test_size', type=int, default=300, help='Number of dialogues to use for testing')
     parser.add_argument('--llm_config_path', type=str,
-                        default="configs/llm_generation/openai_gpt_4o_mini_config.json", help='Path to llm config')
+                        default="configs/llm_generation/openai_gpt_4o_config.json", help='Path to llm config')
     parser.add_argument('--out_path', type=str, help='Path where results will be saved')
     args = parser.parse_args()
     if args.dataset == "empatheticdialogues":

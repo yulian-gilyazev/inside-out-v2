@@ -8,6 +8,8 @@ import traceback
 
 from transformers import AutoModelForCausalLM, AutoTokenizer
 import torch
+import torch.nn.functional as F
+
 
 from src.schema.llm_config import LLMConfig
 
@@ -134,29 +136,56 @@ class LLMConditionalProbabilityClient:
         """
         Calculate the log probability of a completion given a prompt.
         """
-        messages = prompt_messages + [{"role": "assistant", "content": completion}]
-        chat = self.tokenizer.apply_chat_template(messages, tokenize=False)
-        input_ids = self.tokenizer.encode(chat, return_tensors="pt")
 
         prompt_chat = self.tokenizer.apply_chat_template(prompt_messages, tokenize=False)
-        prompt_tokens = self.tokenizer.encode(prompt_chat, return_tensors="pt")
-
+        prompt_tokens = self.tokenizer(promptprompt_chat, return_tensors="pt").to(self.device)
+        prompt_length = prompt_tokens.input_ids.shape[1]
+        
+        messages = prompt_messages + [{"role": "assistant", "content": completion}]
+        chat = self.tokenizer.apply_chat_template(messages, tokenize=False)
+        inputs = self.tokenizer(chat, return_tensors="pt").to(self.device)
+        input_ids = inputs.input_ids
+        
+        # Create causal attention mask
+        seq_length = input_ids.shape[1]
+        attention_mask = torch.ones(seq_length, seq_length, device=self.device)
+        
+        # Fill lower triangle with ones (allow seeing previous tokens)
+        attention_mask = torch.tril(attention_mask)
+        
+        # Fill prompt tokens with ones (allow seeing previous tokens)
+        attention_mask[:prompt_length, :prompt_length] = 1
+        
+        attention_mask = attention_mask.unsqueeze(0).unsqueeze(0)
+        
         with torch.no_grad():
-            outputs = self.model(input_ids.to(self.device))
+            outputs = self.model(
+                input_ids=input_ids,
+                attention_mask=attention_mask,
+                output_attentions=True
+            )
             logits = outputs.logits
-        
-        log_probabilities = []
-    
-        prompt_length = prompt_tokens.shape[1]
-        
-        for i in range(prompt_length - 1, input_ids.shape[1] - 1):
-            next_token_logits = logits[0, i]
-            next_token_id = input_ids[0, i + 1]
             
-            probs = torch.nn.functional.softmax(next_token_logits, dim=0)
-            log_prob = torch.log(probs[next_token_id]).item()
-            log_probabilities.append(log_prob)
+            # Переопределяем attention mask в каждом слое модели через хуки (для некоторых моделей)
+            # Это может потребоваться, если модель не принимает напрямую attention_mask в нужном формате
+            
+        # Вычисляем лог-вероятности для токенов completion
+        log_probs = F.log_softmax(logits, dim=-1)
         
-        total_log_prob = sum(log_probabilities)
+        # Выбираем только логиты для токенов completion (смещаем на -1)
+        shift_logits = logits[0, prompt_length-1:-1, :]
+        shift_labels = input_ids[0, prompt_length:]
         
-        return {"total_log_prob": total_log_prob, "length": len(log_probabilities), "log_probabilities": np.array(log_probabilities)}
+        # Вычисляем лог-вероятности для каждого токена
+        shift_log_probs = F.log_softmax(shift_logits, dim=-1)
+        token_log_probs = shift_log_probs[torch.arange(len(shift_labels)), shift_labels]
+        
+        # Средний и общий логарифм вероятности
+        mean_log_prob = token_log_probs.mean().item()
+        total_log_prob = token_log_probs.sum().item()
+        
+        return {
+            "mean_log_prob": mean_log_prob,
+            "total_log_prob": total_log_prob,
+            "token_log_probs": token_log_probs.cpu().numpy()
+        }

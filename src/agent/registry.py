@@ -53,7 +53,7 @@ def get_inside_out_erc_config(is_extended: bool) -> PipelineAgentConfig:
                         "role": "system",
                         "content": system_prompt + "\n" + emotion_agent_prompt.format(emotion="Anger", emotions_list=emotions_list_str, n_emotions=n_emotions)
                     },
-                    {"role": "user", "content": "Dialogue:\n{input}."},
+                    {"role": "user", "content": "Classify the emotion of speaker (A) in the following dialogue:\n\n{input}."},
                 ]
             },
             {
@@ -64,7 +64,7 @@ def get_inside_out_erc_config(is_extended: bool) -> PipelineAgentConfig:
                         "role": "system",
                         "content": system_prompt + "\n" + emotion_agent_prompt.format(emotion="Disgust", emotions_list=emotions_list_str, n_emotions=n_emotions)
                     },
-                    {"role": "user", "content": "Dialogue:\n{input}."},
+                    {"role": "user", "content": "Classify the emotion of speaker (A) in the following dialogue:\n\n{input}."},
                 ]
             },
             {
@@ -75,7 +75,7 @@ def get_inside_out_erc_config(is_extended: bool) -> PipelineAgentConfig:
                         "role": "system",
                         "content": system_prompt + "\n" + emotion_agent_prompt.format(emotion="Fear", emotions_list=emotions_list_str, n_emotions=n_emotions)
                     },
-                    {"role": "user", "content": "Dialogue:\n{input}."},
+                    {"role": "user", "content": "Classify the emotion of speaker (A) in the following dialogue:\n\n{input}."},
                 ]
             },
             {
@@ -86,7 +86,7 @@ def get_inside_out_erc_config(is_extended: bool) -> PipelineAgentConfig:
                         "role": "system",
                         "content": system_prompt + "\n" + emotion_agent_prompt.format(emotion="Happiness", emotions_list=emotions_list_str, n_emotions=n_emotions)
                     },
-                    {"role": "user", "content": "Dialogue:\n{input}."},
+                    {"role": "user", "content": "Classify the emotion of speaker (A) in the following dialogue:\n\n{input}."},
                 ]
             },
             {
@@ -97,7 +97,7 @@ def get_inside_out_erc_config(is_extended: bool) -> PipelineAgentConfig:
                         "role": "system",
                         "content": system_prompt + "\n" + emotion_agent_prompt.format(emotion="Sadness", emotions_list=emotions_list_str, n_emotions=n_emotions)
                     },
-                    {"role": "user", "content": "Dialogue:\n{input}."},
+                    {"role": "user", "content": "Classify the emotion of speaker (A) in the following dialogue:\n\n{input}."},
                 ]
             },
             {
@@ -108,7 +108,7 @@ def get_inside_out_erc_config(is_extended: bool) -> PipelineAgentConfig:
                      "content": system_prompt + "\n" + aggregator_prompt.format(emotions_list=emotions_list_str, n_emotions=n_emotions)
                      },
                     {"role": "user",
-                     "content": "Dialogue:\n{input}\nAgent responses:\n* {anger_agent}\n* {disgust_agent}\n* {fear_agent}\n* {happiness_agent}\n* {sadness_agent}"
+                     "content": "Classify the emotion of speaker (A) in the following dialogue using the following agent responses\n\nAgent responses:\n* Anger agent: {anger_agent}\n* Disgust agent: {disgust_agent}\n* Fear agent: {fear_agent}\n* Happiness agent: {happiness_agent}\n* Sadness agent: {sadness_agent}\n\n\nDialogue:\n{input}"
                      }
                 ]
             },

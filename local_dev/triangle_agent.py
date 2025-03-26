@@ -11,6 +11,7 @@ def main():
         config_dct = json.load(f)
     llm_config = LLMConfig.from_dict(config_dct)
     llm_client = LLMClient(llm_config)
+    print(llm_client.config.api_key)
 
     system_prompmt = """
     You are a highly advanced language model.

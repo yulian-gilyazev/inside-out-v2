@@ -280,7 +280,7 @@ class Optimizer:
                 )
 
                 input_dict = {
-                    "task": self.config.task_prompt + "\nDialogue:\n\n" + record.format_dialogue()
+                    "task": self.config.task_prompt +  f"Classify the emotion of speaker (A) in the following dialogue:\n\n{record.format_dialogue()}."
                 }
                 answer = self._swarm.arun(input_dict, realized_graph)
                 future_answers.append(answer)

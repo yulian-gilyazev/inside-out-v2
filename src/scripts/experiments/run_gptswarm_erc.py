@@ -16,12 +16,13 @@ python3 -m src.scripts.experiments.run_gptswarm_erc --dataset 'synthetic' --data
 python3 -m src.scripts.experiments.run_gptswarm_erc --dataset 'empatheticdialogues' --dataset_path 'data/empatheticdialogues' --part 'test' --out_path 'data/empatheticdialogues_test_gptswarm_erc_exp2_result_gpt4o-mini.json'
 
 python3 -m src.scripts.experiments.run_gptswarm_erc --dataset 'empatheticdialogues' --dataset_path 'data/empatheticdialogues' --part 'test' --emotions_set 'extended' --out_path 'data/empatheticdialogues_test_gptswarm_erc_exp2_result_gpt4o-mini_extended.json'
+
 """
 
 
 class GPTSwarmOptimizedERCAgent:
 
-    def __init__(self, erc_prompt: str, model_name: str, edge_prob_threshold: float = 0.5, edge_probs_path: str = "models/gptswarm_erc_edge_probs_tensor.pt"):
+    def __init__(self, erc_prompt: str, model_name: str, edge_prob_threshold: float = 0.5, edge_probs_path: str = "models/gptswarm_erc_extended_edge_probs_tensor.pt"):
         edge_probs = torch.load(edge_probs_path)
         self.erc_prompt = erc_prompt
 
@@ -58,11 +59,11 @@ def parse_arguments():
     parser.add_argument('--dataset', type=str, required=True, choices=["synthetic", "empatheticdialogues"], help='Dataset to use')
     parser.add_argument('--dataset_path', type=str, help='Path to dataset')
     parser.add_argument('--part', type=str, choices=["train", "dev", "test"], required=False, help='Part of dataset to use')
-    parser.add_argument('--model_name', type=str,  default='gpt-4o-mini', help='Namse of model')
+    parser.add_argument('--model_name', type=str,  default='gpt-4o', help='Namse of model')
     parser.add_argument('--emotions_set', type=str, choices=["base", "extended"], default="base", help='Emotions set to use')
     parser.add_argument('--edge_prob_threshold', type=float, default=0.5, help='Edge probability threshold')
     parser.add_argument('--path_to_edge_probs', type=str, default="models/gptswarm_erc_edge_probs_tensor.pt", help='Path to edge probabilities')
-    parser.add_argument('--test_size', type=int, default=200, help='Test size')
+    parser.add_argument('--test_size', type=int, default=300, help='Test size')
     parser.add_argument('--out_path', type=str, help='Path where results will be saved')
     args = parser.parse_args()
     if args.dataset == "empatheticdialogues":
