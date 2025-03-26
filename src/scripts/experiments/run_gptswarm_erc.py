@@ -21,7 +21,7 @@ python3 -m src.scripts.experiments.run_gptswarm_erc --dataset 'empatheticdialogu
 
 class GPTSwarmOptimizedERCAgent:
 
-    def __init__(self, erc_prompt: str, model_name: str, edge_prob_threshold: float = 0.5, edge_probs_path: str = "models/gptswarm_erc_edge_probs_tensor.pt"):
+    def __init__(self, erc_prompt: str, model_name: str, edge_prob_threshold: float = 0.5, edge_probs_path: str = "models/gptswarm_erc_extended_edge_probs_tensor.pt"):
         edge_probs = torch.load(edge_probs_path)
         self.erc_prompt = erc_prompt
 

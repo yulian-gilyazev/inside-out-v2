@@ -155,6 +155,5 @@ class LLMCausalProbabilityClient:
         
         total_log_prob = sum(log_probabilities)
         
-        probability = float(np.exp(total_log_prob))
         return {"total_log_prob": total_log_prob.item(), "length": len(log_probabilities), "log_probabilities": np.array(log_probabilities)}
     
