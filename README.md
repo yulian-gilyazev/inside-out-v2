@@ -80,4 +80,4 @@ The table above shows the performance comparison of different emotion recognitio
 |   | Model | Inside-Out | GPTSwarm | GPTSwarm random |
 |:---|:-------------|:-------------|:-------------|:-------------|
 | empathetic dialogues| gpt-4o-mini | 0.215   | 0.233   | 0.123  |
-| empathetic dialogues| gpt-4o |  0.43  |    |  - |
+| empathetic dialogues| gpt-4o |  0.4133  |  0.4067  |  - |
