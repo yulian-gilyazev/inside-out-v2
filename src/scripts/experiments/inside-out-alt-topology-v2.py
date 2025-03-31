@@ -60,9 +60,7 @@ class MultipleIOFromTemplateDebateAgent(MultipleIOFromTemplateAgent):
         previous_results = []
         for emotion, item in zip(context.get_value(self.config.previous_results_id), context.get_value(self.config.input_id)):
             previous_results.append(f"Emotion agent: {emotion}\t response: {item}")
-        
         previous_results_str = "\n".join(previous_results)
-
         for item in context.get_value(self.config.input_id):
             curr_context = copy.deepcopy(context)
             curr_context.data[self.config.input_id] = item
@@ -76,7 +74,11 @@ class ListConcatenatorAgent(Agent):
         super().__init__(config)
     
     def handle(self, context: AgentContext) -> AgentContext:
-        return self.config.separator.join(context.get_value(self.config.input_id))
+        result = []
+        for key, item in zip(context.get_value(self.config.key_id), context.get_value(self.config.input_id)):
+            result.append(f"{key} agent: {item}")
+        return self.config.separator.join(result)
+
 
 @dataclass
 class EmotionParserAgentConfig(AgentConfig):
@@ -100,6 +102,7 @@ class MultipleIOFromTemplateDebateAgentConfig(AgentConfig):
 class ListConcatenatorAgentConfig(AgentConfig):
     separator: str
     input_id: str
+    key_id: str
 
 
 AgentFactory.add_agent(
@@ -133,8 +136,55 @@ AgentFactory.add_agent(
 system_prompt = """You are a highly advanced language model.
 Carefully heed the user's instructions."""
 
+EMOTIONS_GENERATION_PROMPT = """Your assignment is to propose a range of emotional states meant for a dialogue evaluator whose objective is to determine the first speaker’s emotion. 
 
-def get_inside_out_exp_pipeline_cfg():
+By providing both the dialogue and the emotional states you generate, you empower the evaluator to more accurately identify the target speaker’s emotion.
+
+Key Considerations:
+- Your selection of emotional states directly affects the evaluator’s accuracy. Some emotions will help clarify the first speaker’s emotion, while others may obscure it.
+- Make sure your suggestions are grounded in the dialogue context. Conflicting dialogues rarely involve mutual happiness, so avoid adding emotions that create unnecessary confusion.
+- Ensure the emotional states are credible and conducive to facilitating accurate recognition when different agent perspectives are combined.
+
+Format Requirements:
+• Place each emotion inside <EMOTION> tags, for example, <EMOTION>Anger</EMOTION>.
+• Only use the five fundamental emotions from Ekman’s classification: Anger, Disgust, Fear, Happiness, Sadness.
+• You can create combinations of two emotions like <EMOTION>Sadness and Disgust</EMOTION>.
+• Do not repeat the same emotion or combination in different tags.
+• Provide two to five unique emotional states, depending on the complexity of the dialogue.
+• Example Output: <EMOTION>Anger</EMOTION> <EMOTION>Fear and Anger</EMOTION> <EMOTION>Sadness</EMOTION>
+
+Remember: your chosen emotions will heavily influence the evaluator’s performance.
+"""
+
+EMOTIONAL_AGENT_PROMPT = """You feel {emotion_parser}. Act based on what emotion you are experiencing.
+You need to assess emotion of the first (A) interlocutor in the dialogue, estimate your confidence and give reasoning for your answer.
+Your answer should consist of an emotion and an assessment of the level of confidence in it in the range from 0 to 1.
+To select emotions, use Ekman's classification into 5 main emotions - Anger, Disgust, Fear, Happiness, Sadness. 
+Separate the emotion and the response using a semicolon.
+Response example:
+`Anger; 0.7`"""
+
+EMOTIONAL_AGENT_DEBATE_PROMPT = """You will also be given the responses from other emotional agents and your own response from the previous round of debate. This information will help you give your answer more confidently.
+Using the solutions from other emotional agents (each agent has the same task as you, but feels different emotions) and your own response from the previous round of debate as additional information, give a response. 
+Emotional agents responses:\n{prev_round_key}\n\n\n Dialogue:\n{input}."""
+
+
+AGGREGATOR_PROMPT = """You have been given answers by several emotional agents, each of whom was interviewed to assess the emotional state of the first (A) interlocutor in the dialogue.
+You are also given the dialogue itself.
+Your task is to aggregate the responses of these agents and give your own based on the dialogue and the responses of the agents.
+Your answer should consist of an emotion and an assessment of the level of confidence in it in the range from 0 to 1.
+To select emotions, use Ekman's classification into 5 main emotions - Anger, Disgust, Fear, Happiness, Sadness.
+Separate the emotion and the response using a semicolon.
+Response example:
+`Anger; 0.7`
+The same format is followed for agent responses.
+"""
+
+
+def get_inside_out_exp_pipeline_cfg(emotions_generation_prompt: str,
+                                    emotional_agent_prompt: str,
+                                    emotional_agent_debate_prompt: str,
+                                    aggregator_prompt: str):
     pipeline_config = PipelineAgentConfig(
         agent_configs=[
             {
@@ -147,25 +197,7 @@ def get_inside_out_exp_pipeline_cfg():
                 "messages": [
                     {
                         "role": "system",
-                        "content": system_prompt + "\n\n" + """Your task is to generate a set of emotional states for a dialogue evaluator. The evaluator's goal is to accurately identify the emotion of the first speaker in a given dialogue.
-
-The evaluator will be provided with both the dialogue and the emotional states you generate. These emotional states will guide the evaluator in determining the first speaker's emotion.
-
-Key Points:
-- The accuracy of the evaluator's assessment is directly influenced by the emotional states you generate. Some emotions will aid in correctly identifying the first speaker's emotion, while others may complicate the task.
-- Generate emotions that are likely to be experienced by the evaluator, making the task easier. Different agents will experience different emotions, and the responses from all agents will be aggregated in the emotion recognition task.
-- For instance, in a conflict dialogue, it is improbable that both participants will be happy. Avoid generating emotions that could complicate the evaluator's task.
-
-Format Guidelines:
-- Enclose each emotion in <EMOTION>Emotion</EMOTION> tags.
-- Use only the 5 basic emotions from Ekman's list: Anger, Disgust, Fear, Happiness, Sadness.
-- You may generate combinations of two emotions, e.g., <EMOTION>Sadness and Disgust</EMOTION>.
-- Avoid repeating the same emotion or combination of emotions.
-- Generate between 2 to 5 distinct emotional states, depending on the dialogue's complexity.
-- Example output: <EMOTION>Anger</EMOTION> <EMOTION>Fear and Anger</EMOTION> <EMOTION>Sadness</EMOTION>
-
-Keep in mind that your selection of emotions will have a significant impact on the evaluator's performance.
-                        """
+                        "content": system_prompt + "\n\n" + emotions_generation_prompt
                     },
                     {"role": "user", "content": "Dialogue:\n{input}."},
                 ]
@@ -182,13 +214,7 @@ Keep in mind that your selection of emotions will have a significant impact on t
                 "agent_id": "inside_out_agents",
                 "input_id": "emotion_parser",
                 "messages": [
-                    {"role": "system", "content": system_prompt + "\n" + """You feel {emotion_parser}. Act based on what emotion you are experiencing.
-You need to assess emotion of the first (A) interlocutor in the dialogue, estimate your confidence and give reasoning for your answer.
-Your answer should consist of an emotion and an assessment of the level of confidence in it in the range from 0 to 1.
-To select emotions, use Ekman's classification into 5 main emotions - Anger, Disgust, Fear, Happiness, Sadness. 
-Separate the emotion and the response using a semicolon.
-Response example:
-`Anger; 0.7`"""},
+                    {"role": "system", "content": system_prompt + "\n" + emotional_agent_prompt},
                      {"role": "user", "content": "Dialogue:\n{input}."}
                 ]
             },
@@ -199,38 +225,24 @@ Response example:
                 "previous_results_id": "inside_out_agents",
                 "previous_results_concated_id": "inside_out_agents_debate_round1_concated",
                 "messages": [
-                    {"role": "system", "content": system_prompt + "\n" + """You feel {emotion_parser}. Act based on what emotion you are experiencing.
-You need to assess emotion of the first (A) interlocutor in the dialogue, estimate your confidence and give reasoning for your answer.
-Your answer should consist of an emotion and an assessment of the level of confidence in it in the range from 0 to 1.
-To select emotions, use Ekman's classification into 5 main emotions - Anger, Disgust, Fear, Happiness, Sadness. 
-Separate the emotion and the response using a semicolon.
-Response example:
-`Anger; 0.7`"""},
-                     {"role": "user", "content": """You will also be given the responses from other emotional agents and your own response from the previous round of debate. This information will help you give your answer more confidently.
-Using the solutions from other emotional agents (each agent has the same task as you, but feels different emotions) and your own response from the previous round of debate as additional information, give a response. 
-Emotional agents responses:\n{inside_out_agents_debate_round1_concated}\n\n\n Dialogue:\n{input}."""}
+                    {"role": "system", "content": system_prompt + "\n" + emotional_agent_prompt},
+                     {"role": "user", "content": emotional_agent_debate_prompt.format(prev_round_key="inside_out_agents_debate_round1_concated")}
                 ]
             },
             {
                 "agent_type": "ListConcatenator",
                 "agent_id": "inside_out_concatenator",
                 "input_id": "inside_out_agents_debate_round1",
+                "key_id": "emotion_parser",
                 "separator": "\n* "
             },
             {
                 "agent_type": "IO",
                 "agent_id": "aggregator",
+                "input_id": "inside_out_concatenator",
                 "messages": [
                     {"role": "system",
-                     "content": system_prompt + "\n" + """You have been given answers by several emotional agents, each of whom was interviewed to assess the emotional state of the first (A) interlocutor in the dialogue.
-You are also given the dialogue itself.
-Your task is to aggregate the responses of these agents and give your own based on the dialogue and the responses of the agents.
-Your answer should consist of an emotion and an assessment of the level of confidence in it in the range from 0 to 1.
-To select emotions, use Ekman's classification into 5 main emotions - Anger, Disgust, Fear, Happiness, Sadness.
-Separate the emotion and the response using a semicolon.
-Response example:
-`Anger; 0.7`
-The same format is followed for agent responses."""
+                     "content": system_prompt + "\n" + aggregator_prompt
                      },
                     {"role": "user",
                      "content": "Dialogue:\n{input}\nAgent responses:\n* {inside_out_concatenator}"
@@ -257,12 +269,13 @@ def parse_arguments():
     parser.add_argument('--dataset_path', type=str, help='Path to dataset')
     parser.add_argument('--part', type=str, choices=["train", "dev", "test"], required=False, help='Part of dataset to use')
     parser.add_argument('--llm_config_path', type=str,
-                        default="configs/llm_generation/gpt_4o_mini_config.json", help='Path to llm config')
+                        default="configs/llm_generation/openai_gpt_4o_mini_config.json", help='Path to llm config')
     parser.add_argument('--out_path', type=str, help='Path where scenarios will be saved')
     args = parser.parse_args()
     if args.dataset == "empatheticdialogues":
         assert args.part is not None, "Part must be specified for synthetic dataset"
     return args
+
 
 
 def main():
@@ -301,7 +314,6 @@ def main():
     logger.info(f"Completion tokens: {llm_client.get_output_tokens().sum()}")
     logger.info(f"Prompt tokens: {llm_client.get_input_tokens().sum()}")
     logger.info(f"Generation cost: {llm_client.get_generations_cost()}")
-
 
 if __name__ == "__main__":
     main()

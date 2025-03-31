@@ -1,21 +1,25 @@
 import argparse
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 import json
 import os
-from typing import List, Dict, Tuple, Any
+import numpy as np
+from typing import List, Dict, Tuple, Any, Literal
 import re
 import copy
 from src.agent import PipelineAgentConfig, AgentConfig, IOAgentConfig, Agent, AgentContext, AgentFactory, Pipeline
 from src.agent import IOAgent
 from src.llm_client import LLMClient
 from src.schema.llm_config import LLMConfig
-from src.utils.data import SyntheticEmotionDataset, EmpatheticDialoguesDataset, split_dataset
+from src.utils.data import EmotionDataset, SyntheticEmotionDataset, EmpatheticDialoguesDataset, split_dataset
+from src.utils.logger import Logger
+from src.models.opro import OPRO
 from tqdm.auto import tqdm
 from loguru import logger
+import tempfile
 
 
 """
-python3 -m src.scripts.experiments.inside-out-alt-topology --dataset 'synthetic' --dataset_path 'data/synthetic_dialogues/v2' --out_path 'data/inside_out_alt_topology_exp1.json'
+python3 -m src.scripts.experiments.inside-out-alt-topology --dataset 'synthetic' --dataset_path 'data/synthetic_dialogues/v2' --out_path 'data/debug/inside_out_alt_topology_exp_03_30_25.json'
 
 python3 -m src.scripts.experiments.inside-out-alt-topology --dataset 'empatheticdialogues' --dataset_path 'data/empatheticdialogues' --part 'test' --out_path 'data/empatheticdialogues_test_inside_out_alt_topology_exp1.json'
 """
@@ -33,7 +37,6 @@ class EmotionParserAgent(Agent):
         return result
     
 
-
 class MultipleIOFromTemplateAgent(Agent):
     """
     Perform multiple IO operations from a template messages.
@@ -48,7 +51,8 @@ class MultipleIOFromTemplateAgent(Agent):
         for item in context.get_value(self.config.input_id):
             curr_context = copy.deepcopy(context)
             curr_context.data[self.config.input_id] = item
-            results.append(self.io_agent.handle(curr_context))
+            current_res = self.io_agent.handle(curr_context)
+            results.append(current_res)
         return results
 
 
@@ -57,8 +61,11 @@ class ListConcatenatorAgent(Agent):
         super().__init__(config)
     
     def handle(self, context: AgentContext) -> AgentContext:
-        return self.config.separator.join(context.get_value(self.config.input_id))
-
+        result = []
+        for key, item in zip(context.get_value(self.config.key_id), context.get_value(self.config.input_id)):
+            result.append(f"{key} agent: {item}")
+        return self.config.separator.join(result)
+    
 @dataclass
 class EmotionParserAgentConfig(AgentConfig):
     emotion_tokens: Tuple[str, str]
@@ -73,6 +80,7 @@ class MultipleIOFromTemplateAgentConfig(AgentConfig):
 class ListConcatenatorAgentConfig(AgentConfig):
     separator: str
     input_id: str
+    key_id: str
 
 
 AgentFactory.add_agent(
@@ -100,9 +108,52 @@ AgentFactory.add_agent(
 system_prompt = """You are a highly advanced language model.
 Carefully heed the user's instructions."""
 
+EMOTIONS_GENERATION_PROMPT = """Your assignment is to propose a range of emotional states meant for a dialogue evaluator whose objective is to determine the first speaker’s emotion. 
+
+By providing both the dialogue and the emotional states you generate, you empower the evaluator to more accurately identify the target speaker’s emotion.
+
+Key Considerations:
+- Your selection of emotional states directly affects the evaluator’s accuracy. Some emotions will help clarify the first speaker’s emotion, while others may obscure it.
+- Make sure your suggestions are grounded in the dialogue context. Conflicting dialogues rarely involve mutual happiness, so avoid adding emotions that create unnecessary confusion.
+- Ensure the emotional states are credible and conducive to facilitating accurate recognition when different agent perspectives are combined.
+
+Format Requirements:
+• Place each emotion inside <EMOTION> tags, for example, <EMOTION>Anger</EMOTION>.
+• Only use the five fundamental emotions from Ekman’s classification: Anger, Disgust, Fear, Happiness, Sadness.
+• You can create combinations of two emotions like <EMOTION>Sadness and Disgust</EMOTION>.
+• Do not repeat the same emotion or combination in different tags.
+• Provide two to five unique emotional states, depending on the complexity of the dialogue.
+• Example Output: <EMOTION>Anger</EMOTION> <EMOTION>Fear and Anger</EMOTION> <EMOTION>Sadness</EMOTION>
+
+Remember: your chosen emotions will heavily influence the evaluator’s performance.
+"""
 
 
-def get_inside_out_exp_pipeline_cfg():
+EMOTIONAL_AGENT_PROMPT = """You feel {emotion_parser}. Act based on what emotion you are experiencing.
+You need to assess emotion of the first (A) interlocutor in the dialogue and estimate your confidence.
+Your answer should consist of an emotion and an assessment of the level of confidence in it in the range from 0 to 1.
+To select emotions, use Ekman's classification into 5 main emotions - Anger, Disgust, Fear, Happiness, Sadness. 
+Separate the emotion and the response using a semicolon.
+Response example:
+`Anger; 0.7`"""
+
+
+AGGREGATOR_PROMPT = """You have been given answers by several emotional agents, each of whom was interviewed to assess the emotional state of the first (A) interlocutor in the dialogue.
+You are also given the dialogue itself.
+Your task is to aggregate the responses of these agents and give your own based on the dialogue and the responses of the agents.
+Your answer should consist of an emotion and an assessment of the level of confidence in it in the range from 0 to 1.
+To select emotions, use Ekman's classification into 5 main emotions - Anger, Disgust, Fear, Happiness, Sadness.
+Separate the emotion and the response using a semicolon.
+Response example:
+`Anger; 0.7`
+The same format is followed for agent responses.
+"""
+
+def get_inside_out_exp_pipeline_cfg(
+    emotions_generation_prompt: str, 
+    emotional_agent_prompt: str,
+    aggregator_prompt: str,
+):
     pipeline_config = PipelineAgentConfig(
         agent_configs=[
             {
@@ -115,25 +166,7 @@ def get_inside_out_exp_pipeline_cfg():
                 "messages": [
                     {
                         "role": "system",
-                        "content": system_prompt + "\n\n" + """Your task is to generate a set of emotional states for a dialogue evaluator. The evaluator's goal is to accurately identify the emotion of the first speaker in a given dialogue.
-
-The evaluator will be provided with both the dialogue and the emotional states you generate. These emotional states will guide the evaluator in determining the first speaker's emotion.
-
-Key Points:
-- The accuracy of the evaluator's assessment is directly influenced by the emotional states you generate. Some emotions will aid in correctly identifying the first speaker's emotion, while others may complicate the task.
-- Generate emotions that are likely to be experienced by the evaluator, making the task easier. Different agents will experience different emotions, and the responses from all agents will be aggregated in the emotion recognition task.
-- For instance, in a conflict dialogue, it is improbable that both participants will be happy. Avoid generating emotions that could complicate the evaluator's task.
-
-Format Guidelines:
-- Enclose each emotion in <EMOTION>Emotion</EMOTION> tags.
-- Use only the 5 basic emotions from Ekman's list: Anger, Disgust, Fear, Happiness, Sadness.
-- You may generate combinations of two emotions, e.g., <EMOTION>Sadness and Disgust</EMOTION>.
-- Avoid repeating the same emotion or combination of emotions.
-- Generate between 2 to 5 distinct emotional states, depending on the dialogue's complexity.
-- Example output: <EMOTION>Anger</EMOTION> <EMOTION>Fear and Anger</EMOTION> <EMOTION>Sadness</EMOTION>
-
-Keep in mind that your selection of emotions will have a significant impact on the evaluator's performance.
-                        """
+                        "content": system_prompt + "\n\n" + emotions_generation_prompt
                     },
                     {"role": "user", "content": "Dialogue:\n{input}."},
                 ]
@@ -149,13 +182,7 @@ Keep in mind that your selection of emotions will have a significant impact on t
                 "agent_id": "inside_out_agents",
                 "input_id": "emotion_parser",
                 "messages": [
-                    {"role": "system", "content": system_prompt + "\n" + """You feel {emotion_parser}. Act based on what emotion you are experiencing.
-You need to assess emotion of the first (A) interlocutor in the dialogue, estimate your confidence and give reasoning for your answer.
-Your answer should consist of an emotion and an assessment of the level of confidence in it in the range from 0 to 1.
-To select emotions, use Ekman's classification into 5 main emotions - Anger, Disgust, Fear, Happiness, Sadness. 
-Separate the emotion and the response using a semicolon.
-Response example:
-`Anger; 0.7`"""},
+                    {"role": "system", "content": system_prompt + "\n" + emotional_agent_prompt},
                      {"role": "user", "content": "Dialogue:\n{input}."}
                 ]
             },
@@ -163,6 +190,7 @@ Response example:
                 "agent_type": "ListConcatenator",
                 "agent_id": "inside_out_concatenator",
                 "input_id": "inside_out_agents",
+                "key_id": "emotion_parser",
                 "separator": "\n* "
             },
             {
@@ -170,22 +198,14 @@ Response example:
                 "agent_id": "aggregator",
                 "messages": [
                     {"role": "system",
-                     "content": system_prompt + "\n" + """You have been given answers by several emotional agents, each of whom was interviewed to assess the emotional state of the first (A) interlocutor in the dialogue.
-You are also given the dialogue itself.
-Your task is to aggregate the responses of these agents and give your own based on the dialogue and the responses of the agents.
-Your answer should consist of an emotion and an assessment of the level of confidence in it in the range from 0 to 1.
-To select emotions, use Ekman's classification into 5 main emotions - Anger, Disgust, Fear, Happiness, Sadness.
-Separate the emotion and the response using a semicolon.
-Response example:
-`Anger; 0.7`
-The same format is followed for agent responses."""
+                     "content": system_prompt + "\n" + aggregator_prompt
                      },
-                    {"role": "user",
-                     "content": "Dialogue:\n{input}\nAgent responses:\n* {inside_out_concatenator}"
-                     }
+                    {
+                        "role": "user",
+                        "content": "Dialogue:\n{input}\nAgent responses:\n* {inside_out_concatenator}"
+                    }
                 ]
             },
-
         ],
         edges=[("input", "emotions_generator"), ("emotions_generator", "emotion_parser"), ("emotion_parser", "inside_out_agents"), ("inside_out_agents", "inside_out_concatenator"), ("inside_out_concatenator", "aggregator")],
         input_id="input",
@@ -208,6 +228,157 @@ def parse_arguments():
     return args
 
 
+def accuracy(gt, pred):
+    mask = [u == v for u, v in zip(gt, pred)]
+    return np.array(mask).mean()
+
+def evaluate_pipeline(pipeline: Pipeline, pipeline_cfg: PipelineAgentConfig, dset: SyntheticEmotionDataset) -> float:
+    predictions = []
+    gt = []
+    for item in tqdm(dset):
+        context = AgentContext(data={"input": item.format_dialogue()})
+        context = pipeline.process(context)
+        predicted = context.get_value(pipeline_cfg.output_id)
+        predicted = predicted.split(";")[0].lower()
+        predictions.append(predicted)
+        gt.append(item.emotion.value.lower())
+    return accuracy(gt, predictions)
+
+
+opro_metaprompt = """You are an AI assistant specializing in optimizing prompts for emotion classification.
+
+## Task Description
+Optimize an Emotion Recognition prompts for multi-agent pipeline for emotion classification tasks. The pipeline must accurately classify the emotion of the first (A) interlocutor in dialogues into one of the categories, along with a confidence score.
+
+## Pipeline Specifications
+- Powered by Large Language Models (LLMs)
+- Leverages inter-agent communication between LLM calls for enhanced performance
+
+## Input
+- Historical pipeline prompts in JSON format with accuracy metrics (scale: 0 to 1), in format:
+```
+<PROMPT>{prompt}</PROMPT> 
+accuracy: {accuracy}
+```
+- Prompts should be in the same format as original prompts - they are given in dictionary format with some keys and corresponding prompts.
+- Do not change keys, only prompts.
+
+## Modification Scope
+You may modify:
+- Given prompts set
+- IMPORTANT: Do not alter template variables (e.g., {emotion_parser}, {anger_agent}, {aggregator}) as they are essential for passing information between agents
+- IMPORTANT: Do not change the number of prompts, and idea of prompts. You can only change prompts, but idea of prompts should be the same.
+
+## Requirements
+You must preserve:
+- The idea of pipeline
+- Key architectural components and their relationships
+
+## Critical Guidelines
+- Maintain the working structure of prompts - they should be able to be used in the same way as original prompts
+- Prioritize accuracy metric improvements
+- Analyze previous high-performing examples for insights
+- Ensure valid and properly formatted output in the same format as original prompts
+
+Return your optimized pipeline configuration within <CONFIG> tags in valid JSON format, designed to maximize classification accuracy.
+"""
+
+task_prompt = """Analyze previous prompts and create an optimized version that outperforms all prior examples in terms of quality and accuracy scores. Focus on refining agent interactions and prompt engineering to maximize emotion classification performance. Your response must contain ONLY the configuration JSON, enclosed within <PROMPT> and </PROMPT> tags. Do not include any explanations, comments, or additional text outside these tags."""
+
+
+@dataclass
+class OptimizePipelineConfig:
+    n_steps: int = 10
+    llm_config_prompt_search_path: str = "configs/llm_generation/openai_gpt_4o_config.json"
+    opro_memory_strategy: Literal["last", "all"] = "all"
+
+
+    def to_dict(self) -> Dict[str, Any]:
+        return asdict(self)
+
+
+def optimize_pipeline(args, 
+                      optimize_config: OptimizePipelineConfig,
+                      train_dset: EmotionDataset,
+                      test_dset: EmotionDataset,
+                      emotions_generation_prompt: str,
+                      emotional_agent_prompt: str,
+                      aggregator_prompt: str):
+    
+    logger = Logger(
+        group="inside-out-alt-topology-prompt-optimization",
+        run_name="run_synthetic_v2",
+        tags=["inside-out-alt-topology", "erc"],
+        config=optimize_config.to_dict(),
+        use_wandb=True,
+    )
+     
+    with open(args.llm_config_path, "r") as f:
+        config_dct = json.load(f)
+    llm_client = LLMClient(LLMConfig.from_dict(config_dct))
+
+    with open(optimize_config.llm_config_prompt_search_path, "r") as f:
+        config_dct = json.load(f)
+    llm_prompt_searcher = LLMClient(LLMConfig.from_dict(config_dct))
+
+
+    optimizer = OPRO(llm_prompt_searcher,
+                    "accuracy", 
+                    opro_metaprompt,
+                    task_prompt, 
+                    check_fn=lambda x: True, 
+                    prompt_tokens=("<PROMPT>", "</PROMPT>"),
+                    memory_strategy=optimize_config.opro_memory_strategy,
+                    logger=logger)
+    
+    pipeline_prompts_json = json.dumps({
+        "emotions_generation_prompt": emotions_generation_prompt,
+        "emotional_agent_prompt": emotional_agent_prompt,
+        "aggregator_prompt": aggregator_prompt,
+    })
+
+    for step in tqdm(range(optimize_config.n_steps)):
+        pipeline_cfg = get_inside_out_exp_pipeline_cfg(**json.loads(pipeline_prompts_json))
+        pipeline = Pipeline(pipeline_cfg, llm_client)
+        train_acc = evaluate_pipeline(pipeline, pipeline_cfg, train_dset)
+        logger.log(
+            metric_name="train_accuracy",
+            value=train_acc,
+            log_stdout=True,
+            log_wandb=True,
+        )
+        test_acc = evaluate_pipeline(pipeline, pipeline_cfg, test_dset)
+        logger.log(
+            metric_name="test_accuracy",
+            value=test_acc,
+            log_stdout=True,
+            log_wandb=True,
+        )
+        if step == 0:
+            optimizer.initialize(pipeline_prompts_json, reward=train_acc)
+            new_prompt = optimizer.step()
+            pipeline_prompts_json = new_prompt
+        else:
+            optimizer.send_reward(train_acc)
+            new_prompt = optimizer.step()
+            pipeline_prompts_json = new_prompt
+        
+        with tempfile.NamedTemporaryFile(delete=False) as f:
+            cfg_path = f.name
+            f.write(pipeline_prompts_json.encode("utf-8"))
+            artifact = logger.wandb.Artifact(name=f"config_{step}", type="dataset")
+            artifact.add_file(cfg_path)
+            logger.run.log_artifact(artifact)
+            logger.info(f"Config {step} saved")
+            logger.info(f"Config: \n{pipeline_prompts_json}")
+    
+    logger.info(f"Completion tokens: {llm_client.get_output_tokens().sum()}")
+    logger.info(f"Prompt tokens: {llm_client.get_input_tokens().sum()}")
+    logger.info(f"Generation cost: {llm_client.get_generations_cost()}")
+
+
+    return pipeline
+
 def main():
     args = parse_arguments()
 
@@ -215,31 +386,50 @@ def main():
         config_dct = json.load(f)
     llm_client = LLMClient(LLMConfig.from_dict(config_dct))
 
-    inside_out_pipeline_config = get_inside_out_exp_pipeline_cfg()
+    inside_out_pipeline_config = get_inside_out_exp_pipeline_cfg(
+        emotions_generation_prompt=EMOTIONS_GENERATION_PROMPT,
+        emotional_agent_prompt=EMOTIONAL_AGENT_PROMPT,
+        aggregator_prompt=AGGREGATOR_PROMPT
+    )
 
     pipeline = Pipeline(inside_out_pipeline_config, llm_client)
     if args.dataset == "synthetic":
         dialogues_path = os.path.join(args.dataset_path, "dialogues.json")
         scenarios_path = os.path.join(args.dataset_path, "scenarios.json")
         dset = SyntheticEmotionDataset(dialogues_path, scenarios_path)
-        dset, _ = split_dataset(dset, 200)
+        dset, train_dset = split_dataset(dset, 200)
+        train_dset, _ = split_dataset(train_dset, 200)
     elif args.dataset == "empatheticdialogues":
         dset = EmpatheticDialoguesDataset(args.dataset_path, args.part)
+        train_dset = EmpatheticDialoguesDataset(args.dataset_path, "train")
+        train_dset, _ = split_dataset(train_dset, 200)
 
-    logger.info(f"Start inference on {len(dset)} dialogues")
-    result = []
-    for idx in tqdm(range(len(dset))):
-        item = dset[idx]
+    # if args.optimize_pipeline:
 
-        context = AgentContext(data={"input": item.format_dialogue()})
+    optimize_pipeline(args,
+                    optimize_config=OptimizePipelineConfig(n_steps=20),
+                    train_dset=train_dset,
+                    test_dset=dset,
+                    emotions_generation_prompt=EMOTIONS_GENERATION_PROMPT,
+                    emotional_agent_prompt=EMOTIONAL_AGENT_PROMPT,
+                    aggregator_prompt=AGGREGATOR_PROMPT)
+        
+    # else:
 
-        context = pipeline.process(context)
-        predicted = context.get_value(inside_out_pipeline_config.output_id)
-        result.append({"id": item.id, "empathy_label": item.empathy_label, "prediction": predicted})
+    #     logger.info(f"Start inference on {len(dset)} dialogues")
+    #     result = []s
+    #     for idx in tqdm(range(len(dset))):
+    #         item = dset[idx]
 
-    with open(args.out_path, "w") as f:
-        json.dump({"predictions": result}, f)
-    logger.info(f"Saved results to {args.out_path}")
+    #         context = AgentContext(data={"input": item.format_dialogue()})
+
+    #         context = pipeline.process(context)
+    #         predicted = context.get_value(inside_out_pipeline_config.output_id)
+    #         result.append({"id": item.id, "empathy_label": item.empathy_label, "prediction": predicted})
+
+    #     with open(args.out_path, "w") as f:
+    #         json.dump({"predictions": result}, f)
+    #     logger.info(f"Saved results to {args.out_path}")
 
     logger.info(f"Completion tokens: {llm_client.get_output_tokens().sum()}")
     logger.info(f"Prompt tokens: {llm_client.get_input_tokens().sum()}")

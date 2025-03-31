@@ -6,12 +6,16 @@ from src.llm_client import LLMClient
 from src.schema.llm_config import LLMConfig
 
 
+"""
+python3 -m local_dev.triangle_agent
+"""
+
+
 def main():
     with open("configs/llm_generation/openai_gpt_4o_mini_config.json", "r") as f:
         config_dct = json.load(f)
     llm_config = LLMConfig.from_dict(config_dct)
     llm_client = LLMClient(llm_config)
-    print(llm_client.config.api_key)
 
     system_prompmt = """
     You are a highly advanced language model.
