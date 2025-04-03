@@ -69,13 +69,13 @@ The table above shows the performance comparison of different emotion recognitio
 
 
 **Table 1: Performance on Ekman's 5 Basic Emotions**
-
 |   | BERT Baseline| Inside-Out | Inside-Out Generated Emotions | Inside-Out Generated Emotions + Debate| GPTSwarm | GPTSwarm rand |OPRO |
 |:---|:-------------|:-------------|:-------------|:-------------|:-------------|:-------------|:-------------|
 | synthetic data| 0.645    | 0.735    | 0.745  |  0.73    |   0.8  | 0.625  | 0.755  |
 | empathetic dialogues| 0.7673    | 0.8157    | 0.8096   |  -    |   0.78   | -  | -  |
 
+
 **Table 2: Performance on Extended Emotions Set (32 emotions)**
-|   |  | Inside-Out | GPTSwarm | GPTSwarm random |
-|:---|:-------------|:-------------|:-------------|:-------------|
-| empathetic dialogues | gpt-4o-mini<br>gpt-4o | 0.215<br>0.4133 | 0.233<br>0.4067 | 0.123<br>- |
+|   |  | Inside-Out |Inside-Out Generated Emotions |Inside-Out Generated Emotions + Debate| GPTSwarm | GPTSwarm random |
+|:---|:-------------|:-------------|:-------------|:-------------|:-------------|:-------------|
+| empathetic dialogues | gpt-4o-mini<br>gpt-4o | 0.215<br>0.4133 |0.253<br>-|0.266<br>-| 0.233<br>0.4067 | 0.123<br>- |
