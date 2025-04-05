@@ -383,6 +383,7 @@ def parse_arguments():
     parser.add_argument('--part', type=str, choices=["train", "dev", "test"], required=False, help='Part of dataset to use')
     parser.add_argument('--llm_config_path', type=str,
                         default="configs/llm_generation/openai_gpt_4_config.json", help='Path to llm config')
+    parser.add_argument('--train_size', type=int, default=300, help='Train size')
     parser.add_argument('--is_extended', action='store_true', help='Use extended dataset')
     parser.add_argument('--out_path', type=str, help='Path where scenarios will be saved')
     parser.add_argument('--num_workers', type=int, default=4, help='Number of workers for evaluation')
@@ -414,12 +415,12 @@ def main():
         scenarios_path = os.path.join(args.dataset_path, "scenarios.json")
         dset = SyntheticEmotionDataset(dialogues_path, scenarios_path)
         dset, train_dset = split_dataset(dset, 300)
-        train_dset, _ = split_dataset(train_dset, 300)
+        train_dset, _ = split_dataset(train_dset, args.train_size)
     elif args.dataset == "empatheticdialogues":
         dset = EmpatheticDialoguesDataset(args.dataset_path, args.part, extended=args.is_extended)
         dset, _ = split_dataset(dset, 100)
         train_dset = EmpatheticDialoguesDataset(args.dataset_path, "train", extended=args.is_extended)
-        train_dset, _ = split_dataset(train_dset, 100)
+        train_dset, _ = split_dataset(train_dset, args.train_size)
 
     if args.action == "optimize":
         config = OptimizePipelineConfig(n_steps=10, num_workers=args.num_workers)
