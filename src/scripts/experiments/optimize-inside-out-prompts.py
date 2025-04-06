@@ -1,16 +1,19 @@
 import json
-import tempfile
-import numpy as np
 import os
-from src.utils.logger import Logger
-from src.models.opro import OPRO
-from src.utils.data import SyntheticEmotionDataset, EmpatheticDialoguesDataset, split_dataset
-from src.schema.llm_config import LLMConfig
-from src.llm_client import LLMClient
-from src.agent.pipeline import PipelineAgentConfig, Pipeline, AgentContext
-from dataclasses import dataclass, asdict
-from typing import Dict, Any, Literal
+import tempfile
+from dataclasses import asdict, dataclass
+from typing import Any, Dict, Literal
+
+import numpy as np
 from tqdm import tqdm
+
+from src.agent.pipeline import AgentContext, Pipeline, PipelineAgentConfig
+from src.llm_client import LLMClient
+from src.models.opro import OPRO
+from src.schema.llm_config import LLMConfig
+from src.utils.data import (EmpatheticDialoguesDataset,
+                            SyntheticEmotionDataset, split_dataset)
+from src.utils.logger import Logger
 
 """Run
 python3 -m src.scripts.experiments.optimize-inside-out-prompts

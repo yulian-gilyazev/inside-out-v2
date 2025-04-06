@@ -1,23 +1,25 @@
 import argparse
-from dataclasses import dataclass, asdict
+import copy
 import json
 import os
-import numpy as np
-from typing import List, Dict, Tuple, Any, Literal
 import re
-import copy
-from src.agent import PipelineAgentConfig, AgentConfig, IOAgentConfig, Agent, AgentContext, AgentFactory, Pipeline
-from src.agent import IOAgent
+from dataclasses import asdict, dataclass
+from typing import Any, Dict, List, Literal, Tuple
+
+from src.agent import (Agent, AgentConfig, AgentContext, AgentFactory,
+                       Pipeline, PipelineAgentConfig)
 from src.llm_client import LLMClient
 from src.schema.llm_config import LLMConfig
-from src.utils.data import EmotionDataset, SyntheticEmotionDataset, EmpatheticDialoguesDataset, split_dataset
+from src.scripts.experiments.agents_opro import (OptimizePipelineConfig,
+                                                 optimize_pipeline)
+from src.scripts.experiments.utils import accuracy, run_pipeline
+from src.utils.data import (EmpatheticDialoguesDataset,
+                            SyntheticEmotionDataset, split_dataset)
 from src.utils.logger import Logger
-from src.utils.prompts import get_inside_out_emotinoal_prompt, get_inside_out_aggregator_prompt, get_system_prompt, get_emotions_generation_prompt
-from src.models.opro import OPRO
-from tqdm.auto import tqdm
-from loguru import logger
-import tempfile
-
+from src.utils.prompts import (get_emotions_generation_prompt,
+                               get_inside_out_aggregator_prompt,
+                               get_inside_out_emotinoal_prompt,
+                               get_system_prompt)
 
 """
 python3 -m src.scripts.experiments.inside-out-alt-topology --dataset 'synthetic' --dataset_path 'data/synthetic_dialogues/v2' --out_path 'data/debug/inside_out_alt_topology_exp_04_02_25.json'
@@ -172,49 +174,6 @@ def get_inside_out_exp_pipeline_cfg(
     return pipeline_config
 
 
-def parse_arguments():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--dataset', type=str, required=True, choices=["synthetic", "empatheticdialogues"], help='Dataset to use')
-    parser.add_argument('--dataset_path', type=str, help='Path to dataset')
-    parser.add_argument('--part', type=str, choices=["train", "dev", "test"], required=False, help='Part of dataset to use')
-    parser.add_argument('--llm_config_path', type=str,
-                        default="configs/llm_generation/openai_gpt_4o_mini_config.json", help='Path to llm config')
-    parser.add_argument('--out_path', type=str, help='Path where scenarios will be saved')
-    parser.add_argument('--is_extended', action='store_true', help='Use extended dataset')
-    args = parser.parse_args()
-    if args.dataset == "empatheticdialogues":
-        assert args.part is not None, "Part must be specified for synthetic dataset"
-    return args
-
-
-def accuracy(gt, pred):
-    mask = [u == v for u, v in zip(gt, pred)]
-    return np.array(mask).mean()
-
-def evaluate_pipeline(pipeline: Pipeline, pipeline_cfg: PipelineAgentConfig, dset: SyntheticEmotionDataset) -> float:
-    predictions = []
-    gt = []
-    from concurrent.futures import ThreadPoolExecutor
-    from functools import partial
-    
-    def process_item(item, pipeline, pipeline_cfg):
-        context = AgentContext(data={"input": item.format_dialogue()})
-        context = pipeline.process(context)
-        predicted = context.get_value(pipeline_cfg.output_id)
-        predicted = predicted.split(";")[0].lower()
-        return predicted, item.emotion.value.lower()
-    
-    process_func = partial(process_item, pipeline=pipeline, pipeline_cfg=pipeline_cfg)
-    
-    with ThreadPoolExecutor(max_workers=8) as executor:
-        results = list(tqdm(executor.map(process_func, dset), total=len(dset)))
-    
-    predictions = [res[0] for res in results]
-    gt = [res[1] for res in results]
-    
-    return accuracy(gt, predictions)
-
-
 opro_metaprompt = """You are an AI assistant specializing in optimizing prompts for emotion classification.
 
 ## Task Description
@@ -257,104 +216,25 @@ You must preserve:
 Return your optimized pipeline configuration within <PROMPT> tags in valid JSON format, designed to maximize classification accuracy. Before returning the configuration, you are allowed to give analysis of the previous prompts and the results and suggest changes. But stick to the format given in the description.
 """
 
-task_prompt = """Analyze previous prompts and create an optimized version that outperforms all prior examples in terms of quality and accuracy scores. Focus on refining agent interactions and prompt engineering to maximize emotion classification performance. Your response must contain ONLY the configuration JSON, enclosed within <PROMPT> and </PROMPT> tags. Do not include any explanations, comments, or additional text outside these tags."""
+opro_task_prompt = """Analyze previous prompts and create an optimized version that outperforms all prior examples in terms of quality and accuracy scores. Focus on refining agent interactions and prompt engineering to maximize emotion classification performance. Your response must contain ONLY the configuration JSON, enclosed within <PROMPT> and </PROMPT> tags. Do not include any explanations, comments, or additional text outside these tags."""
 
-
-@dataclass
-class OptimizePipelineConfig:
-    n_steps: int = 4
-    llm_config_prompt_search_path: str = "configs/llm_generation/openai_gpt_4o_config.json"
-    opro_memory_strategy: Literal["last", "all"] = "all"
-
-
-    def to_dict(self) -> Dict[str, Any]:
-        return asdict(self)
-
-
-def optimize_pipeline(args, 
-                      optimize_config: OptimizePipelineConfig,
-                      train_dset: EmotionDataset,
-                      test_dset: EmotionDataset,
-                      system_prompt: str,
-                      emotions_generation_prompt: str,
-                      emotional_agent_prompt: str,
-                      aggregator_prompt: str):
-    
-    logger = Logger(
-        group="inside-out-alt-topology-prompt-optimization",
-        run_name="run_empatheticdialogues_v2_04_02",
-        tags=["inside-out-alt-topology", "empatheticdialogues"],
-        config=optimize_config.to_dict(),
-        use_wandb=True,
-    )
-     
-    with open(args.llm_config_path, "r") as f:
-        config_dct = json.load(f)
-    llm_client = LLMClient(LLMConfig.from_dict(config_dct))
-
-    with open(optimize_config.llm_config_prompt_search_path, "r") as f:
-        config_dct = json.load(f)
-    llm_prompt_searcher = LLMClient(LLMConfig.from_dict(config_dct))
-
-
-    optimizer = OPRO(llm_prompt_searcher,
-                    "accuracy", 
-                    opro_metaprompt,
-                    task_prompt, 
-                    check_fn=lambda x: True, 
-                    prompt_tokens=("<PROMPT>", "</PROMPT>"),
-                    memory_strategy=optimize_config.opro_memory_strategy,
-                    logger=logger)
-    
-    pipeline_prompts_json = json.dumps({
-        "system_prompt": system_prompt,
-        "emotions_generation_prompt": emotions_generation_prompt,
-        "emotional_agent_prompt": emotional_agent_prompt,
-        "aggregator_prompt": aggregator_prompt,
-    })
-
-    for step in tqdm(range(optimize_config.n_steps)):
-        pipeline_prompts = json.loads(pipeline_prompts_json)
-        pipeline_prompts["emotional_agent_prompt"] = pipeline_prompts["emotional_agent_prompt"].replace("{emotion}", "{emotion_parser}")
-
-        pipeline_cfg = get_inside_out_exp_pipeline_cfg(**pipeline_prompts)
-        pipeline = Pipeline(pipeline_cfg, llm_client)
-        train_acc = evaluate_pipeline(pipeline, pipeline_cfg, train_dset)
-        logger.log(
-            metric_name="train_accuracy",
-            value=train_acc,
-            log_stdout=True,
-            log_wandb=True,
-        )
-        test_acc = evaluate_pipeline(pipeline, pipeline_cfg, test_dset)
-        logger.log(
-            metric_name="test_accuracy",
-            value=test_acc,
-            log_stdout=True,
-            log_wandb=True,
-        )
-        if step == 0:
-            optimizer.initialize(pipeline_prompts_json, reward=train_acc)
-            new_prompt = optimizer.step()
-            pipeline_prompts_json = new_prompt
-        else:
-            optimizer.send_reward(train_acc)
-            new_prompt = optimizer.step()
-            pipeline_prompts_json = new_prompt
-        
-        with tempfile.NamedTemporaryFile(delete=False) as f:
-            cfg_path = f.name
-            f.write(pipeline_prompts_json.encode("utf-8"))
-            artifact = logger.wandb.Artifact(name=f"config_{step}", type="dataset")
-            artifact.add_file(cfg_path)
-            logger.run.log_artifact(artifact)
-            logger.info(f"Config {step} saved")
-            logger.info(f"Config: \n{pipeline_prompts_json}")
-    
-    logger.info(f"Completion tokens: {llm_client.get_output_tokens().sum()}")
-    logger.info(f"Prompt tokens: {llm_client.get_input_tokens().sum()}")
-    logger.info(f"Generation cost: {llm_client.get_generations_cost()}")
-    return pipeline
+def parse_arguments():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--dataset', type=str, required=True, choices=["synthetic", "empatheticdialogues"], help='Dataset to use')
+    parser.add_argument('--dataset_path', type=str, help='Path to dataset')
+    parser.add_argument('--part', type=str, choices=["train", "dev", "test"], required=False, help='Part of dataset to use')
+    parser.add_argument('--llm_config_path', type=str,
+                        default="configs/llm_generation/openai_gpt_4o_mini_config.json", help='Path to llm config')
+    parser.add_argument('--llm_prompt_searcher_config_path', type=str,
+                        default="configs/llm_generation/openai_gpt_4o_config.json", help='Path to llm config for prompt searcher')
+    parser.add_argument('--out_path', type=str, help='Path where scenarios will be saved')
+    parser.add_argument('--is_extended', action='store_true', help='Use extended dataset')
+    parser.add_argument('--num_workers', type=int, default=4, help='Number of workers for evaluation')
+    parser.add_argument('--action', type=str, default="evaluate", choices=["optimize", "evaluate"], required=True, help='Action to perform')
+    args = parser.parse_args()
+    if args.dataset == "empatheticdialogues":
+        assert args.part is not None, "Part must be specified for synthetic dataset"
+    return args
 
 def main():
     args = parse_arguments()
@@ -371,19 +251,6 @@ def main():
 
     aggregator_prompt = get_inside_out_aggregator_prompt(is_extended=args.is_extended)
 
-    print(emotions_generation_prompt)
-    print(emotional_agent_prompt)
-    print(aggregator_prompt)
-
-
-    # inside_out_pipeline_config = get_inside_out_exp_pipeline_cfg(
-    #     system_prompt=system_prompt,
-    #     emotions_generation_prompt=emotions_generation_prompt,
-    #     emotional_agent_prompt=emotional_agent_prompt,
-    #     aggregator_prompt=aggregator_prompt
-    # )
-
-    # pipeline = Pipeline(inside_out_pipeline_config, llm_client)
     if args.dataset == "synthetic":
         dialogues_path = os.path.join(args.dataset_path, "dialogues.json")
         scenarios_path = os.path.join(args.dataset_path, "scenarios.json")
@@ -396,38 +263,63 @@ def main():
         train_dset = EmpatheticDialoguesDataset(args.dataset_path, "train", extended=args.is_extended)
         train_dset, _ = split_dataset(train_dset, 300)
 
-    # if args.optimize_pipeline:
+    if args.action == "optimize":
+        with open(args.llm_prompt_searcher_config_path, "r") as f:
+            config_dct = json.load(f)
+        llm_prompt_searcher = LLMClient(LLMConfig.from_dict(config_dct))
 
-    optimize_pipeline(args,
-                    optimize_config=OptimizePipelineConfig(n_steps=10),
-                    train_dset=train_dset,
-                    test_dset=dset,
-                    system_prompt=system_prompt,
-                    emotions_generation_prompt=emotions_generation_prompt,
-                    emotional_agent_prompt=emotional_agent_prompt,
-                    aggregator_prompt=aggregator_prompt)
-        
-    # else:
+        optimize_config = OptimizePipelineConfig(num_workers=args.num_workers)
+        logger = Logger(
+            group="inside-out-alt-topology-prompt-optimization",
+            run_name="run_empatheticdialogues_v2_04_02",
+            tags=["inside-out-alt-topology", "empatheticdialogues"],
+            config=optimize_config.to_dict(),
+            use_wandb=True,
+        )
 
-    #     logger.info(f"Start inference on {len(dset)} dialogues")
-    #     result = []s
-    #     for idx in tqdm(range(len(dset))):
-    #         item = dset[idx]
+        prompts = {
+            "system_prompt": system_prompt,
+            "emotions_generation_prompt": emotions_generation_prompt,
+            "emotional_agent_prompt": emotional_agent_prompt,
+            "aggregator_prompt": aggregator_prompt,
+        }
 
-    #         context = AgentContext(data={"input": item.format_dialogue()})
+        optimize_pipeline(
+            llm_client, 
+            llm_prompt_searcher,
+            logger,
+            optimize_config,
+            train_dset,
+            dset,
+            opro_metaprompt,
+            opro_task_prompt,
+            opro_prompt_tokens=("<PROMPT>", "</PROMPT>"),
+            prompts=prompts, 
+            cfg_from_prompts_fn=get_inside_out_exp_pipeline_cfg,
+            check_fn=None)
+    
+    elif args.action == "evaluate":
+        assert args.out_path is not None, "Output path must be specified"
+        inside_out_pipeline_config = get_inside_out_exp_pipeline_cfg(
+            system_prompt=system_prompt,
+            emotions_generation_prompt=emotions_generation_prompt,
+            emotional_agent_prompt=emotional_agent_prompt,
+            aggregator_prompt=aggregator_prompt
+        )
+        pipeline = Pipeline(inside_out_pipeline_config, llm_client)
 
-    #         context = pipeline.process(context)
-    #         predicted = context.get_value(inside_out_pipeline_config.output_id)
-    #         result.append({"id": item.id, "empathy_label": item.empathy_label, "prediction": predicted})
+        logger.info(f"Start inference on {len(dset)} dialogues")
+        predictions, gt = run_pipeline(pipeline, inside_out_pipeline_config, dset, args.num_workers)
+        with open(args.out_path, "w") as f:
+            json.dump({"predictions": predictions}, f)
+        logger.info(f"Saved results to {args.out_path}")
 
-    #     with open(args.out_path, "w") as f:
-    #         json.dump({"predictions": result}, f)
-    #     logger.info(f"Saved results to {args.out_path}")
 
+        logger.info(f"Accuracy: {accuracy(gt, [pred.split(";")[0].lower() for pred in predictions])}")
+    
     logger.info(f"Completion tokens: {llm_client.get_output_tokens().sum()}")
     logger.info(f"Prompt tokens: {llm_client.get_input_tokens().sum()}")
     logger.info(f"Generation cost: {llm_client.get_generations_cost()}")
-
 
 if __name__ == "__main__":
     main()

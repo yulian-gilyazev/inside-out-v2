@@ -1,12 +1,13 @@
 import argparse
 import json
 import os
+
 import more_itertools
 from loguru import logger
 from tqdm.auto import tqdm
 
-from src.utils.data import SyntheticEmotionDataset, EmpatheticDialoguesDataset
 from src.models.bert_erc import BertERCModel
+from src.utils.data import EmpatheticDialoguesDataset, SyntheticEmotionDataset
 
 """ Example
 python3 -m src.scripts.experiments.run_bert_baseline --dataset 'synthetic' --dataset_path 'data/synthetic_dialogues/v2' --out_path 'data/baseline_erc_bert.json'

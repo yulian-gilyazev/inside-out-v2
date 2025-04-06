@@ -1,28 +1,28 @@
-import sys
-import os
 import asyncio
-from typing import Optional, List, Any, Dict, Literal
-from tqdm import tqdm
-import torch
+import os
+import sys
 import time
-import numpy as np
-from dataclasses import dataclass, asdict
 from collections import Counter
+from dataclasses import asdict, dataclass
+from typing import Any, Dict, List, Literal, Optional
 
-from src.utils.data import SyntheticEmotionDataset, EmpatheticDialoguesDataset, split_dataset
-from src.utils.logger import Logger
+import numpy as np
+import torch
+from tqdm import tqdm
+
 from src.schema.emotions import Emotion, EmpatheticDialoguesEmotion
+from src.utils.data import (EmpatheticDialoguesDataset,
+                            SyntheticEmotionDataset, split_dataset)
+from src.utils.logger import Logger
 
 sys.path.append(os.path.join("libs", "GPTSwarm"))
 
-from swarm.graph import Node, Graph
-from swarm.environment.prompt.prompt_set_registry import PromptSetRegistry
-from swarm.llm.format import Message
-from swarm.llm import LLMRegistry
 from swarm.environment.agents.agent_registry import AgentRegistry
-
-from swarm.graph import Graph
+from swarm.environment.prompt.prompt_set_registry import PromptSetRegistry
+from swarm.graph import Graph, Node
 from swarm.graph.swarm import Swarm
+from swarm.llm import LLMRegistry
+from swarm.llm.format import Message
 
 
 class ERCCoTStep(Node):

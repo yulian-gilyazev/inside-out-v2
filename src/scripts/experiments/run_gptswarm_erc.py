@@ -1,14 +1,15 @@
 import argparse
 import json
 import os
+
 import more_itertools
 from loguru import logger
 from tqdm.auto import tqdm
 
-from src.utils.data import SyntheticEmotionDataset, EmpatheticDialoguesDataset, split_dataset, Dialogue
 from src.schema.emotions import Emotion
 from src.scripts.experiments.gpt_swarm_erc_optimization import *
-
+from src.utils.data import (Dialogue, EmpatheticDialoguesDataset,
+                            SyntheticEmotionDataset, split_dataset)
 
 """ Example
 python3 -m src.scripts.experiments.run_gptswarm_erc --dataset 'synthetic' --dataset_path 'data/synthetic_dialogues/v2' --out_path 'data/gptswarm_agent_erc_exp2_result_gpt4o.json' --model_name 'gpt-4o'

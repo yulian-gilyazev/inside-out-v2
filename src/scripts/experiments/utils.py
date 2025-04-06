@@ -1,10 +1,11 @@
-import numpy as np
-from tqdm import tqdm
-from src.agent import Pipeline, PipelineAgentConfig, AgentContext
-from src.utils.data import SyntheticEmotionDataset
-
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
+
+import numpy as np
+from tqdm import tqdm
+
+from src.agent import AgentContext, Pipeline, PipelineAgentConfig
+from src.utils.data import SyntheticEmotionDataset
 
 
 def accuracy(gt, pred):
