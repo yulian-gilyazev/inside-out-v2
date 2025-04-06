@@ -78,4 +78,4 @@ The table above shows the performance comparison of different emotion recognitio
 **Table 2: Performance on Extended Emotions Set (32 emotions)**
 |   |  | Inside-Out |Inside-Out Generated Emotions |Inside-Out Generated Emotions + Debate| GPTSwarm | GPTSwarm random |
 |:---|:-------------|:-------------|:-------------|:-------------|:-------------|:-------------|
-| empathetic dialogues | gpt-4o-mini<br>gpt-4o | 0.215<br>0.4133 |0.253<br>0.43|0.266<br>0.45| 0.233<br>0.4067 | 0.123<br>- |
+| empathetic dialogues | gpt-4o-mini<br>gpt-4o | 0.215<br>0.442 |0.253<br>0.4533|0.266<br>0.4866| 0.233<br>0.4067 | 0.123<br>- |

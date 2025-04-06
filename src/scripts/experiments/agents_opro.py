@@ -1,7 +1,7 @@
 import json
 import tempfile
 from dataclasses import asdict, dataclass
-from typing import Callable, Dict, Literal, Optional, Tuple
+from typing import Any, Callable, Dict, Literal, Optional, Tuple
 
 from tqdm.auto import tqdm
 
@@ -19,6 +19,9 @@ class OptimizePipelineConfig:
     n_steps: int = 4
     opro_memory_strategy: Literal["last", "all"] = "all"
     num_workers: int = 4
+    
+    def to_dict(self) -> Dict[str, Any]:
+        return asdict(self)
 
 def optimize_pipeline(llm_client: LLMClient, 
                       llm_prompt_searcher: LLMClient,
