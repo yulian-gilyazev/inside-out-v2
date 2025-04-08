@@ -46,7 +46,13 @@ class IOAgent(Agent):
 
     def handle(self, context: AgentContext) -> AgentContext:
         messages = self._format_messages(context)
+        # print('---' * 10)
+        # print(messages)
+        # print('---' * 10)
         response = self.llm_client.chat(messages)
+        # print('---' * 4)
+        # print(response.message.content)
+        # print('---' * 4)
         return response.message.content
         
 

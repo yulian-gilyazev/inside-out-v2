@@ -25,7 +25,26 @@ To select emotions, {emotions_list_str}.
 Separate the emotion and the response using a semicolon.
 Response example:
 `Anger; 0.7`"""
-    
+
+
+def get_inside_out_emotinoal_prompt_predebate(is_extended: bool) -> str:
+    emotions_list = get_emotions_list_str(is_extended)
+    emotions_list_str = ", ".join(emotions_list)    
+    n_emotions = len(emotions_list)
+    if not is_extended:
+        emotions_list_str = f"use Ekman's classification into {n_emotions} main emotions - {emotions_list_str}"
+    else:
+        emotions_list_str = f"use classification into {n_emotions} emotions - {emotions_list_str}"
+
+    return f"""You feel {{emotion}}. Act based on what emotion you are experiencing.
+You need to assess emotion of the first (A) interlocutor in the dialogue and estimate your confidence.
+Your answer should consist of an emotion and an assessment of the level of confidence in it in the range from 0 to 1.
+To select emotions, {emotions_list_str}. 
+Separate the emotion and the response using a semicolon.
+Response example:
+`Anger; 0.7`"""
+
+
 def get_inside_out_aggregator_prompt(is_extended: bool) -> str:
     emotions_list = get_emotions_list_str(is_extended)
     emotions_list_str = ", ".join(emotions_list)
@@ -56,30 +75,63 @@ def get_emotions_generation_prompt(is_extended: bool) -> str:
     else:
         emotions_list_str = f"{n_emotions} emotions: {emotions_list_str}."
 
-    return f"""Your assignment is to propose a range of emotional states meant for a dialogue evaluator whose objective is to determine the first speaker’s emotion in the dialogue. 
+    return f"""You are tasked with generating a set of emotional states to assist an agent-based dialogue evaluator in accurately identifying the first speaker’s underlying emotion in a conversation.
 
-By providing both the dialogue and the emotional states you generate, you empower the evaluator to more accurately identify the target speaker’s emotion.
+Your generated emotional states should guide the evaluator by offering emotionally plausible interpretations grounded in the dialogue context. The quality and usefulness of the agent system’s emotional recognition depend directly on the relevance and clarity of these emotions.
+Be careful and choose emotional states from the perspective of which it would be easy to correctly assess the emotion of the interlocutor in the dialogue.
 
-Key Considerations:
-- Your selection of emotional states directly affects the evaluator’s accuracy. Some emotions will help clarify the first speaker’s emotion, while others may obscure it.
-- Make sure your suggestions are grounded in the dialogue context. Conflicting dialogues rarely involve mutual happiness, so avoid adding emotions that create unnecessary confusion.
-- Ensure the emotional states are credible and conducive to facilitating accurate recognition when different agent perspectives are combined.
+**Instructions:**
 
-Format Requirements:
-• Place each emotion inside <EMOTION> tags, for example, <EMOTION>Anger</EMOTION>.
-• Only use the {emotions_list_str}
-• You can create combinations of two emotions like <EMOTION>Sadness and Disgust</EMOTION>.
-• Do not repeat the same emotion or combination in different tags.
-• Provide two to five unique emotional states, depending on the complexity of the dialogue.
-• Example Output: <EMOTION>Anger</EMOTION> <EMOTION>Fear and Anger</EMOTION> <EMOTION>Sadness</EMOTION>
+1. **Context Awareness:** Base your emotional suggestions on the tone, content, and dynamics of the dialogue. Avoid introducing emotional states that are inconsistent with the scenario or that could introduce ambiguity (e.g., "Joy" in an argument).
 
-Remember: your chosen emotions will heavily influence the evaluator’s performance."""
+2. **Emotional Diversity (as needed):** Depending on the dialogue’s complexity, provide between **1 and 8 distinct emotional states**. Use nuanced or compound emotions when appropriate (e.g., <EMOTION>Anger and Betrayal</EMOTION>), but avoid redundancy.
+
+3. **Formatting Rules (Strict):**
+   - Each emotion must be wrapped in `<EMOTION>` tags. 
+     *Example:* `<EMOTION>Frustration</EMOTION>`
+   - Combinations of two emotions are allowed using “and.”  
+     *Example:* `<EMOTION>Fear and Disgust</EMOTION>`
+   - Emotions must be selected only from this predefined list: {emotions_list_str}.
+   - Do **not** duplicate any emotion or combination within a response.
+
+4. **Impact on Evaluator:** Your emotional choices should help disambiguate the first speaker’s emotional state, enabling the agent system to synthesize accurate insights when integrating multiple agent perspectives.
+
+**Example Output:**
+
+```
+<EMOTION>Frustration</EMOTION> <EMOTION>Sadness and Fear</EMOTION> <EMOTION>Disgust</EMOTION>
+```
+
+**Important:** The generated emotional states will directly influence the evaluator’s interpretations. Aim for emotional labels that are both **plausible** and **diagnostically useful**."""
 
 
-def get_emotional_agent_debate_prompt() -> str:
-    return """You will also be given the responses from other emotional agents and your own response from the previous round of debate. This information will help you give your answer more confidently.
-Using the solutions from other emotional agents (each agent has the same task as you, but feels different emotions) and your own response from the previous round of debate as additional information, give a response. 
-Emotional agents responses:\n{prev_round_key}\n\n\n Dialogue:\n{input}."""
+def get_emotional_agent_debate_prompt(is_extended: bool) -> str:
+    emotions_list = get_emotions_list_str(is_extended)
+    emotions_list_str = ", ".join(emotions_list)    
+    n_emotions = len(emotions_list)
+    if not is_extended:
+        emotions_list_str = f"use Ekman's classification into {n_emotions} main emotions - {emotions_list_str}"
+    else:
+        emotions_list_str = f"use classification into {n_emotions} emotions - {emotions_list_str}"
+
+    return f"""You feel {{emotion}}. Act based on what emotion you are experiencing.
+You need to assess emotion of the first (A) interlocutor in the dialogue and estimate your confidence.
+You will be provided with the following supplementary information to support your evaluation:  
+- Your own previous assessment from the last round.  
+- The current assessments made by other emotional agents, each analyzing Speaker A’s emotional state through the lens of a different emotion.
+
+All previous assessments will be presented as a single list, which includes your own prior evaluation.
+
+Use this context to revise and improve your current prediction, taking into account both your past perspective and the varying emotional viewpoints of other agents in the system.
+The ultimate goal of this round is to provide the most accurate assessment of the emotion of the interlocutor.
+
+Your answer should consist of an emotion and an assessment of the level of confidence in it in the range from 0 to 1.
+To select emotions, {emotions_list_str}. 
+Separate the emotion and the response using a semicolon.
+Response example:
+`Anger; 0.7`
+"""
+
 
 def get_system_prompt() -> str:
     return """You are a highly advanced language model.

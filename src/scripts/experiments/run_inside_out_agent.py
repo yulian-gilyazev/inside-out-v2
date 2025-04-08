@@ -23,17 +23,11 @@ from src.utils.prompts import (get_inside_out_aggregator_prompt,
                                get_system_prompt)
 
 """ Example
-python3 -m src.scripts.experiments.run_inside_out_agent --dataset 'synthetic' \
-      --dataset_path 'data/synthetic_dialogues/v2' --out_path 'data/inside_out_erc_results.json'
-
-python3 -m src.scripts.experiments.run_inside_out_agent  --dataset 'empatheticdialogues' \
-      --dataset_path 'data/empatheticdialogues' --part 'test' --out_path 'data/empatheticdialogues_test_inside_out_erc_results.json'
-
 python3 -m src.scripts.experiments.run_inside_out_agent --action 'evaluate' --dataset 'empatheticdialogues' \
       --dataset_path 'data/empatheticdialogues' --part 'test' \
-      --out_path 'data/empatheticdialogues_test_inside_out_erc_extended_emotions_results_gpt4o.json' --is_extended \
-      --llm_config_path 'configs/llm_generation/openai_gpt_4o_config.json' \
-      --train_size 200 --test_size 1000 --num_workers 4
+      --out_path 'data/debug/empatheticdialogues_test_inside_out_erc_extended_emotions_results_gpt4o.json' --is_extended \
+      --llm_config_path 'configs/llm_generation/openai_gpt_4o_mini_config.json' \
+      --train_size 200 --test_size 100 --num_workers 8
 """
 
 
@@ -55,7 +49,7 @@ def get_inside_out_exp_pipeline_cfg(system_prompt: str,
                 "messages": [
                     {
                         "role": "system",
-                        "content": system_prompt + "\n" + emotional_agent_prompt.format(emotion="Anger", emotions_list=emotions_list_str, n_emotions=n_emotions)
+                        "content": system_prompt + "\n" + emotional_agent_prompt.format(emotion="Anger")
                     },
                     {"role": "user", "content": "Classify the emotion of speaker (A) in the following dialogue:\n\n{input}."},
                 ]
@@ -66,7 +60,7 @@ def get_inside_out_exp_pipeline_cfg(system_prompt: str,
                 "messages": [
                     {
                         "role": "system",
-                        "content": system_prompt + "\n" + emotional_agent_prompt.format(emotion="Disgust", emotions_list=emotions_list_str, n_emotions=n_emotions)
+                        "content": system_prompt + "\n" + emotional_agent_prompt.format(emotion="Disgust")
                     },
                     {"role": "user", "content": "Classify the emotion of speaker (A) in the following dialogue:\n\n{input}."},
                 ]
@@ -77,7 +71,7 @@ def get_inside_out_exp_pipeline_cfg(system_prompt: str,
                 "messages": [
                     {
                         "role": "system",
-                        "content": system_prompt + "\n" + emotional_agent_prompt.format(emotion="Fear", emotions_list=emotions_list_str, n_emotions=n_emotions)
+                        "content": system_prompt + "\n" + emotional_agent_prompt.format(emotion="Fear")
                     },
                     {"role": "user", "content": "Classify the emotion of speaker (A) in the following dialogue:\n\n{input}."},
                 ]
@@ -88,7 +82,7 @@ def get_inside_out_exp_pipeline_cfg(system_prompt: str,
                 "messages": [
                     {
                         "role": "system",
-                        "content": system_prompt + "\n" + emotional_agent_prompt.format(emotion="Happiness", emotions_list=emotions_list_str, n_emotions=n_emotions)
+                        "content": system_prompt + "\n" + emotional_agent_prompt.format(emotion="Happiness")
                     },
                     {"role": "user", "content": "Classify the emotion of speaker (A) in the following dialogue:\n\n{input}."},
                 ]
@@ -99,7 +93,7 @@ def get_inside_out_exp_pipeline_cfg(system_prompt: str,
                 "messages": [
                     {
                         "role": "system",
-                        "content": system_prompt + "\n" + emotional_agent_prompt.format(emotion="Sadness", emotions_list=emotions_list_str, n_emotions=n_emotions)
+                        "content": system_prompt + "\n" + emotional_agent_prompt.format(emotion="Sadness")
                     },
                     {"role": "user", "content": "Classify the emotion of speaker (A) in the following dialogue:\n\n{input}."},
                 ]
@@ -109,8 +103,8 @@ def get_inside_out_exp_pipeline_cfg(system_prompt: str,
                 "agent_id": "aggregator",
                 "messages": [
                     {"role": "system",
-                     "content": system_prompt + "\n" + aggregator_prompt.format(emotions_list=emotions_list_str, n_emotions=n_emotions)
-                     },
+                     "content": system_prompt + "\n" + aggregator_prompt
+                    },
                     {"role": "user",
                      "content": "Classify the emotion of speaker (A) in the following dialogue using the following agent responses\n\nAgent responses:\n* Anger agent: {anger_agent}\n* Disgust agent: {disgust_agent}\n* Fear agent: {fear_agent}\n* Happiness agent: {happiness_agent}\n* Sadness agent: {sadness_agent}\n\n\nDialogue:\n{input}"
                      }

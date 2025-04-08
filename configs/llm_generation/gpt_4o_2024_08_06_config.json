@@ -3,6 +3,6 @@
   "model_name": "openai/gpt-4o-2024-08-06",
   "max_tokens": 8000,
   "temperature": 0.8,
-  "input_token_price": 0.000003,
+  "input_token_price": 0.0000025,
   "output_token_price": 0.000012
 }

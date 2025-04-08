@@ -3,28 +3,24 @@ import copy
 import json
 import os
 import re
-from dataclasses import asdict, dataclass
-from typing import Any, Dict, List, Literal, Tuple
+from dataclasses import dataclass
+from typing import Any, Dict, List, Tuple
 
-from src.agent import (Agent, AgentConfig, AgentContext, AgentFactory,
-                       Pipeline, PipelineAgentConfig)
+from src.agent import Agent, AgentConfig, AgentContext, AgentFactory, Pipeline, PipelineAgentConfig
 from src.llm_client import LLMClient
 from src.schema.llm_config import LLMConfig
-from src.scripts.experiments.agents_opro import (OptimizePipelineConfig,
-                                                 optimize_pipeline)
+from src.scripts.experiments.agents_opro import OptimizePipelineConfig, optimize_pipeline
 from src.scripts.experiments.utils import accuracy, run_pipeline
-from src.utils.data import (EmpatheticDialoguesDataset,
-                            SyntheticEmotionDataset, split_dataset)
+from src.utils.data import EmpatheticDialoguesDataset, SyntheticEmotionDataset, split_dataset
 from src.utils.logger import Logger
-from src.utils.prompts import (get_emotions_generation_prompt,
-                               get_inside_out_aggregator_prompt,
-                               get_inside_out_emotinoal_prompt,
-                               get_system_prompt)
+from src.utils.prompts import get_emotions_generation_prompt, get_inside_out_aggregator_prompt, get_inside_out_emotinoal_prompt, get_system_prompt
 
 """
-python3 -m src.scripts.experiments.inside-out-alt-topology --dataset 'synthetic' --dataset_path 'data/synthetic_dialogues/v2' --out_path 'data/debug/inside_out_alt_topology_exp_04_02_25.json'
-
-python3 -m src.scripts.experiments.inside-out-alt-topology --dataset 'empatheticdialogues' --dataset_path 'data/empatheticdialogues' --part 'test' --out_path 'data/debug/empatheticdialogues_test_inside_out_alt_topology_exp_04_02_25.json' --is_extended
+python3 -m src.scripts.experiments.inside-out-alt-topology --action 'evaluate' --dataset 'empatheticdialogues' \
+      --dataset_path 'data/empatheticdialogues' --part 'test' \
+      --out_path 'data/debug/empatheticdialogues_test_inside_out_erc_alt_topology_extended_emotions_results_gpt4o.json' --is_extended \
+      --llm_config_path 'configs/llm_generation/openai_gpt_4o_config.json' \
+      --train_size 200 --test_size 100 --num_workers 4
 """
 
 
@@ -128,7 +124,7 @@ def get_inside_out_exp_pipeline_cfg(
                         "role": "system",
                         "content": system_prompt + "\n\n" + emotions_generation_prompt
                     },
-                    {"role": "user", "content": "Dialogue:\n{input}."},
+                    {"role": "user", "content": "Generate a set of emotional states for the following dialogue:\n\n{input}."},
                 ]
             },
             {
@@ -143,7 +139,7 @@ def get_inside_out_exp_pipeline_cfg(
                 "input_id": "emotion_parser",
                 "messages": [
                     {"role": "system", "content": system_prompt + "\n" + emotional_agent_prompt},
-                     {"role": "user", "content": "Dialogue:\n{input}."}
+                    {"role": "user", "content": "Classify the emotion of speaker (A) in the following dialogue:\n\n{input}."}
                 ]
             },
             {
@@ -162,7 +158,7 @@ def get_inside_out_exp_pipeline_cfg(
                      },
                     {
                         "role": "user",
-                        "content": "Dialogue:\n{input}\nAgent responses:\n* {inside_out_concatenator}"
+                        "content": "Classify the emotion of speaker (A) in the following dialogue using the following agent responses\n\nAgent responses:\n* {inside_out_concatenator}\n\n\nDialogue:\n{input}"
                     }
                 ]
             },
@@ -220,20 +216,29 @@ opro_task_prompt = """Analyze previous prompts and create an optimized version t
 
 def parse_arguments():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--dataset', type=str, required=True, choices=["synthetic", "empatheticdialogues"], help='Dataset to use')
+    parser.add_argument('--dataset', type=str, choices=["synthetic", "empatheticdialogues"], help='Dataset to use')
     parser.add_argument('--dataset_path', type=str, help='Path to dataset')
     parser.add_argument('--part', type=str, choices=["train", "dev", "test"], required=False, help='Part of dataset to use')
+    parser.add_argument('--is_extended', action='store_true', help='Use extended emotions set')
+    parser.add_argument('--test_size', type=int, default=30, help='Number of dialogues to use for testing')
+    parser.add_argument('--train_size', type=int, required=False, help='Number of dialogues to use for training')
     parser.add_argument('--llm_config_path', type=str,
                         default="configs/llm_generation/openai_gpt_4o_mini_config.json", help='Path to llm config')
     parser.add_argument('--llm_prompt_searcher_config_path', type=str,
                         default="configs/llm_generation/openai_gpt_4o_config.json", help='Path to llm config for prompt searcher')
-    parser.add_argument('--out_path', type=str, help='Path where scenarios will be saved')
-    parser.add_argument('--is_extended', action='store_true', help='Use extended dataset')
-    parser.add_argument('--num_workers', type=int, default=4, help='Number of workers for evaluation')
-    parser.add_argument('--action', type=str, default="evaluate", choices=["optimize", "evaluate"], required=True, help='Action to perform')
+    parser.add_argument('--num_workers', type=int, default=4, help='Number of workers to use')
+    parser.add_argument('--action', type=str, default="evaluate", choices=["evaluate", "optimize"], help='Action to perform')
+    parser.add_argument('--out_path', type=str, required=False, help='Path where results will be saved')
     args = parser.parse_args()
     if args.dataset == "empatheticdialogues":
-        assert args.part is not None, "Part must be specified for synthetic dataset"
+       assert args.part is not None, "Part must be specified for synthetic dataset"
+    if args.dataset == "synthetic":
+        assert args.is_extended is False, "Emotions set must be base for synthetic dataset"
+    if args.action == "optimize":
+        assert args.test_size is not None, "Test size must be specified for optimization"
+        assert args.train_size is not None, "Train size must be specified for evaluation"
+    if args.action == "evaluate":
+        assert args.out_path is not None, "Output path must be specified for evaluation"
     return args
 
 def main():
@@ -249,19 +254,21 @@ def main():
 
     emotional_agent_prompt = get_inside_out_emotinoal_prompt(is_extended=args.is_extended)
 
+    emotional_agent_prompt = emotional_agent_prompt.replace("{emotion}", "{emotion_parser}")
+
     aggregator_prompt = get_inside_out_aggregator_prompt(is_extended=args.is_extended)
 
     if args.dataset == "synthetic":
         dialogues_path = os.path.join(args.dataset_path, "dialogues.json")
         scenarios_path = os.path.join(args.dataset_path, "scenarios.json")
         dset = SyntheticEmotionDataset(dialogues_path, scenarios_path)
-        dset, train_dset = split_dataset(dset, 300)
-        train_dset, _ = split_dataset(train_dset, 300)
+        dset, train_dset = split_dataset(dset, args.test_size)
+        train_dset, _ = split_dataset(train_dset, args.train_size)
     elif args.dataset == "empatheticdialogues":
         dset = EmpatheticDialoguesDataset(args.dataset_path, args.part, extended=args.is_extended)
-        dset, _ = split_dataset(dset, 300)
+        dset, _ = split_dataset(dset, args.test_size)
         train_dset = EmpatheticDialoguesDataset(args.dataset_path, "train", extended=args.is_extended)
-        train_dset, _ = split_dataset(train_dset, 300)
+        train_dset, _ = split_dataset(train_dset, args.train_size)
 
     if args.action == "optimize":
         with open(args.llm_prompt_searcher_config_path, "r") as f:
@@ -300,6 +307,9 @@ def main():
     
     elif args.action == "evaluate":
         assert args.out_path is not None, "Output path must be specified"
+        logger = Logger(
+            use_wandb=False
+        )
         inside_out_pipeline_config = get_inside_out_exp_pipeline_cfg(
             system_prompt=system_prompt,
             emotions_generation_prompt=emotions_generation_prompt,
@@ -315,7 +325,7 @@ def main():
         logger.info(f"Saved results to {args.out_path}")
 
 
-        logger.info(f"Accuracy: {accuracy(gt, [pred.split(";")[0].lower() for pred in predictions])}")
+        logger.info(f"Accuracy: {accuracy(gt, [pred.split(';')[0].lower() for pred in predictions])}")
     
     logger.info(f"Completion tokens: {llm_client.get_output_tokens().sum()}")
     logger.info(f"Prompt tokens: {llm_client.get_input_tokens().sum()}")
