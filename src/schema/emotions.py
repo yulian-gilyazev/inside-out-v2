@@ -1,5 +1,19 @@
 from enum import Enum
 
+
+class EmotionSet(Enum):
+    EKMAN = "ekman"
+    EMPATHETIC_DIALOGUES = "emp_dialogues"
+    TRUNCATED = "truncated"
+    
+
+    @classmethod
+    def from_str(cls, value):
+        for name, member in cls.__members__.items():
+            if member.value == value:
+                return member
+        raise ValueError(f'{value} is not a valid {cls.__name__}')
+
 class BaseEmotion(Enum):
     @classmethod
     def from_str(cls, value):
@@ -99,3 +113,72 @@ class EmpatheticDialoguesEmotion(BaseEmotion):
     def emotion_to_empathy_dialogues_emotion(cls, emotion: BaseEmotion) -> str:
         mapping = cls.emotion_to_empathy_dialogues_emotion_mapping()
         return mapping[emotion.value]
+
+
+
+class EmpatheticDialoguesTruncatedEmotion(BaseEmotion):
+    SENTIMENTALITY = "sentimentality"
+    FEAR = "fear"
+    HAPPINESS = "happiness"
+    PRIDE = "pride"
+    ANGER = "anger"
+    SADNESS = "sadness"
+    JEALOUSY = "jealousy"
+    GRATEFULNESS = "gratefulness"
+    EMBARRASSMENT = "embarrassment"
+    GUILT = "guilt"
+    SURPRISE = "surprise"
+    CONFIDENCE = "confidence"
+    CARING = "caring"
+    TRUSTING = "trusting"
+    DISGUST = "disgust"
+    ANXIOUSNESS = "anxiousness"
+    HOPEFULNESS = "hopefulness"
+
+    @classmethod
+    def empathy_dialogues_emotion_to_emotion_mapping(self):
+        return {
+            "sentimental": "sentimentality", 
+            "afraid": "fear",
+            "proud": "pride",
+            "faithful": "trusting",
+            "terrified": "fear",
+            "joyful": "happiness",
+            "angry": "anger",
+            "sad": "sadness",
+            "jealous": "jealousy",
+            "grateful": "gratefulness",
+            "prepared": "anxiousness",
+            "embarrassed": "embarrassment",
+            "excited": "happiness",
+            "annoyed": "anger",
+            "lonely": "sadness",
+            "ashamed": "embarrassment",
+            "surprised": "surprise",
+            "nostalgic": "sentimentality",
+            "confident": "confidence",
+            "furious": "anger",
+            "disappointed": "sadness",
+            "caring": "caring",
+            "guilty": "guilt",
+            "trusting": "trusting",
+            "disgusted": "disgust",
+            "anticipating": "anxiousness",
+            "anxious": "anxiousness",
+            "hopeful": "hopefulness",
+            "content": "happiness",
+            "impressed": "surprise",
+            "apprehensive": "anxiousness",
+            "devastated": "sadness",
+        }
+    
+    @classmethod
+    def empathy_dialogues_emotion_to_emotion(cls, empathy_dialogues_emotion: str) -> BaseEmotion:
+        mapping = cls.empathy_dialogues_emotion_to_emotion_mapping()
+        return EmpatheticDialoguesTruncatedEmotion.from_str(mapping[empathy_dialogues_emotion])
+
+    @classmethod
+    def emotion_to_empathy_dialogues_emotion(cls, emotion: BaseEmotion) -> str:
+        mapping = cls.emotion_to_empathy_dialogues_emotion_mapping()
+        reverse_mapping = {v: k for k, v in mapping.items()}
+        return reverse_mapping[emotion.value]

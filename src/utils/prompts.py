@@ -1,19 +1,21 @@
-from src.schema.emotions import Emotion, EmpatheticDialoguesEmotion
+from src.schema.emotions import Emotion, EmpatheticDialoguesEmotion, EmpatheticDialoguesTruncatedEmotion,EmotionSet
 
 
-def get_emotions_list_str(is_extended: bool) -> str:
-    if is_extended:
+def get_emotions_list_str(emotion_set: EmotionSet) -> str:
+    if emotion_set == EmotionSet.EMPATHETIC_DIALOGUES:
         emotions_cls = EmpatheticDialoguesEmotion
+    elif emotion_set == EmotionSet.TRUNCATED:
+        emotions_cls = EmpatheticDialoguesTruncatedEmotion
     else:
         emotions_cls = Emotion
     emotions_list = [emotion.lower().capitalize() for emotion in emotions_cls.__members__.keys()]
     return emotions_list
 
-def get_inside_out_emotinoal_prompt(is_extended: bool) -> str:
-    emotions_list = get_emotions_list_str(is_extended)
+def get_inside_out_emotinoal_prompt(emotion_set: EmotionSet) -> str:
+    emotions_list = get_emotions_list_str(emotion_set)
     emotions_list_str = ", ".join(emotions_list)    
     n_emotions = len(emotions_list)
-    if not is_extended:
+    if emotion_set == EmotionSet.EKMAN:
         emotions_list_str = f"use Ekman's classification into {n_emotions} main emotions - {emotions_list_str}"
     else:
         emotions_list_str = f"use classification into {n_emotions} emotions - {emotions_list_str}"
@@ -27,11 +29,11 @@ Response example:
 `Anger; 0.7`"""
 
 
-def get_inside_out_emotinoal_prompt_predebate(is_extended: bool) -> str:
-    emotions_list = get_emotions_list_str(is_extended)
+def get_inside_out_emotinoal_prompt_predebate(emotion_set: EmotionSet) -> str:
+    emotions_list = get_emotions_list_str(emotion_set)
     emotions_list_str = ", ".join(emotions_list)    
     n_emotions = len(emotions_list)
-    if not is_extended:
+    if emotion_set == EmotionSet.EKMAN:
         emotions_list_str = f"use Ekman's classification into {n_emotions} main emotions - {emotions_list_str}"
     else:
         emotions_list_str = f"use classification into {n_emotions} emotions - {emotions_list_str}"
@@ -45,11 +47,11 @@ Response example:
 `Anger; 0.7`"""
 
 
-def get_inside_out_aggregator_prompt(is_extended: bool) -> str:
-    emotions_list = get_emotions_list_str(is_extended)
+def get_inside_out_aggregator_prompt(emotion_set: EmotionSet) -> str:
+    emotions_list = get_emotions_list_str(emotion_set)
     emotions_list_str = ", ".join(emotions_list)
     n_emotions = len(emotions_list)
-    if not is_extended:
+    if emotion_set == EmotionSet.EKMAN:
         emotions_list_str = f"use Ekman's classification into {n_emotions} main emotions - {emotions_list_str}"
     else:
         emotions_list_str = f"use classification into {n_emotions} emotions - {emotions_list_str}"
@@ -65,12 +67,12 @@ The same format is followed for agent responses.
 """
 
 
-def get_emotions_generation_prompt(is_extended: bool) -> str:
-    emotions_list = get_emotions_list_str(is_extended)
+def get_emotions_generation_prompt(emotion_set: EmotionSet) -> str:
+    emotions_list = get_emotions_list_str(emotion_set)
     emotions_list_str = ", ".join(emotions_list)
     n_emotions = len(emotions_list)
 
-    if is_extended:
+    if emotion_set == EmotionSet.EKMAN:
         emotions_list_str = f"{n_emotions} emotions from Ekman’s classification: {emotions_list_str}."
     else:
         emotions_list_str = f"{n_emotions} emotions: {emotions_list_str}."
@@ -105,11 +107,11 @@ Be careful and choose emotional states from the perspective of which it would be
 **Important:** The generated emotional states will directly influence the evaluator’s interpretations. Aim for emotional labels that are both **plausible** and **diagnostically useful**."""
 
 
-def get_emotional_agent_debate_prompt(is_extended: bool) -> str:
-    emotions_list = get_emotions_list_str(is_extended)
+def get_emotional_agent_debate_prompt(emotion_set: EmotionSet) -> str:
+    emotions_list = get_emotions_list_str(emotion_set)
     emotions_list_str = ", ".join(emotions_list)    
     n_emotions = len(emotions_list)
-    if not is_extended:
+    if emotion_set == EmotionSet.EKMAN:
         emotions_list_str = f"use Ekman's classification into {n_emotions} main emotions - {emotions_list_str}"
     else:
         emotions_list_str = f"use classification into {n_emotions} emotions - {emotions_list_str}"

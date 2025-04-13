@@ -10,12 +10,13 @@ from tqdm.auto import tqdm
 from src.agent import AgentContext, Pipeline, registry
 from src.agent.registry import PipelineAgentConfig
 from src.llm_client import LLMClient
+from src.schema.emotions import EmotionSet
 from src.schema.llm_config import LLMConfig
 from src.scripts.experiments.agents_opro import (OptimizePipelineConfig,
                                                  optimize_pipeline)
 from src.scripts.experiments.utils import (accuracy, evaluate_pipeline,
                                            run_pipeline)
-from src.utils.data import (EmotionDataset, EmpatheticDialoguesDataset,
+from src.utils.data import (EmotionDataset, EmpatheticDialoguesDataset, 
                             SyntheticEmotionDataset, split_dataset)
 from src.utils.logger import Logger
 from src.utils.prompts import (get_inside_out_aggregator_prompt,
@@ -25,7 +26,7 @@ from src.utils.prompts import (get_inside_out_aggregator_prompt,
 """ Example
 python3 -m src.scripts.experiments.run_inside_out_agent --action 'evaluate' --dataset 'empatheticdialogues' \
       --dataset_path 'data/empatheticdialogues' --part 'test' \
-      --out_path 'data/debug/empatheticdialogues_test_inside_out_erc_extended_emotions_results_gpt4o.json' --is_extended \
+      --out_path 'data/debug/empatheticdialogues_test_inside_out_erc_truncated_emotions_results_gpt4o-mini.json' --emotions_set 'truncated' \
       --llm_config_path 'configs/llm_generation/openai_gpt_4o_mini_config.json' \
       --train_size 200 --test_size 100 --num_workers 8
 """
@@ -167,7 +168,7 @@ def parse_arguments():
     parser.add_argument('--dataset', type=str, choices=["synthetic", "empatheticdialogues"], help='Dataset to use')
     parser.add_argument('--dataset_path', type=str, help='Path to dataset')
     parser.add_argument('--part', type=str, choices=["train", "dev", "test"], required=False, help='Part of dataset to use')
-    parser.add_argument('--is_extended', action='store_true', help='Use extended emotions set')
+    parser.add_argument('--emotions_set', type=str, choices=["base", "emp_dialogues", "truncated"], help='Emotions set to use')
     parser.add_argument('--test_size', type=int, default=30, help='Number of dialogues to use for testing')
     parser.add_argument('--train_size', type=int, required=False, help='Number of dialogues to use for training')
     parser.add_argument('--llm_config_path', type=str,
@@ -187,6 +188,7 @@ def parse_arguments():
         assert args.train_size is not None, "Train size must be specified for evaluation"
     if args.action == "evaluate":
         assert args.out_path is not None, "Output path must be specified for evaluation"
+    args.emotion_set = EmotionSet.from_str(args.emotions_set)
     return args
 
 
@@ -198,8 +200,8 @@ def main():
     llm_client = LLMClient(LLMConfig.from_dict(config_dct))
 
     system_prompt = get_system_prompt()
-    emotional_agent_prompt = get_inside_out_emotinoal_prompt(is_extended=args.is_extended)
-    aggregator_prompt = get_inside_out_aggregator_prompt(is_extended=args.is_extended)
+    emotional_agent_prompt = get_inside_out_emotinoal_prompt(emotion_set=args.emotion_set)
+    aggregator_prompt = get_inside_out_aggregator_prompt(emotion_set=args.emotion_set)
     if args.dataset == "synthetic":
         dialogues_path = os.path.join(args.dataset_path, "dialogues.json")
         scenarios_path = os.path.join(args.dataset_path, "scenarios.json")
@@ -208,9 +210,9 @@ def main():
         if args.action == "optimize":
             train_dset, _ = split_dataset(train_dset, args.train_size)
     elif args.dataset == "empatheticdialogues":
-        dset = EmpatheticDialoguesDataset(args.dataset_path, args.part, extended=args.is_extended)
+        dset = EmpatheticDialoguesDataset(args.dataset_path, args.part, emotion_set=args.emotion_set)
         dset, _ = split_dataset(dset, args.test_size)
-        train_dset = EmpatheticDialoguesDataset(args.dataset_path, "train", extended=args.is_extended)
+        train_dset = EmpatheticDialoguesDataset(args.dataset_path, "train", emotion_set=args.emotion_set)
         if args.action == "optimize":
             train_dset, _ = split_dataset(train_dset, args.train_size)
 

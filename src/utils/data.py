@@ -1,4 +1,4 @@
-from typing import List, Tuple
+from typing import List, Tuple, Literal
 import json
 import os
 import numpy as np
@@ -6,7 +6,7 @@ import pandas as pd
 import csv
 import copy
 from dataclasses import dataclass
-from src.schema.emotions import Emotion, EmpatheticDialoguesEmotion
+from src.schema.emotions import EmotionSet, Emotion, EmpatheticDialoguesEmotion, EmpatheticDialoguesTruncatedEmotion
 from loguru import logger
 
 
@@ -136,11 +136,11 @@ class EmpatheticDialoguesDataset(EmotionDataset):
             
         return pd.DataFrame(data)
 
-    def __init__(self, dataset_path: str, part: str = "test", extended: bool = False, shuffle=False):
+    def __init__(self, dataset_path: str, part: str = "test", emotion_set: EmotionSet = EmotionSet.EKMAN, shuffle=False):
         super().__init__(shuffle=shuffle)
         df = self._read_empatheticdialogues_csv(os.path.join(dataset_path, f"{part}.csv"))
         df.context = df.context.apply(lambda x: x.lower())
-        if not extended:
+        if emotion_set == EmotionSet.EKMAN:
             df = df[df.context.isin(self.not_extended_emotions)]
         for conv_id, group in df.groupby('conv_id'):
             if len(group) < 2 or group["utterance_idx"].nunique() != len(group):
@@ -150,10 +150,12 @@ class EmpatheticDialoguesDataset(EmotionDataset):
                 logger.warning(f"Conversation {conv_id} has missing utterance indices or out of order")
                 continue
             assert group['context'].nunique() == 1, f"Conversation {conv_id} has multiple contexts"
-            if not extended:
+            if emotion_set == EmotionSet.EKMAN:
                 emotion = self.context_to_emotion[group.iloc[0]['context']]
-            else:
+            elif emotion_set == EmotionSet.EMPATHETIC_DIALOGUES:
                 emotion = EmpatheticDialoguesEmotion.empathy_dialogues_emotion_to_emotion(group.iloc[0]['context'])
+            elif emotion_set == EmotionSet.TRUNCATED:
+                emotion = EmpatheticDialoguesTruncatedEmotion.empathy_dialogues_emotion_to_emotion(group.iloc[0]['context'])
             assert group['prompt'].nunique() == 1, f"Conversation {conv_id} has multiple prompts"
             scenario = group.iloc[0]['prompt']
             interlocutor_scenario = ""
