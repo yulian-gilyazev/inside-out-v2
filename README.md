@@ -79,3 +79,9 @@ The table above shows the performance comparison of different emotion recognitio
 |   |  | Inside-Out |Inside-Out Generated Emotions |Inside-Out Generated Emotions + Debate| GPTSwarm | GPTSwarm random |
 |:---|:-------------|:-------------|:-------------|:-------------|:-------------|:-------------|
 | empathetic dialogues | gpt-4o-mini<br>gpt-4o | 0.215<br>0.442 |0.253<br>0.457|0.266<br>0.46| 0.233<br>0.4067 | 0.123<br>- |
+
+
+**Table 3: Performance on Truncated Emotions Set (17 emotions)**
+|   |  | Inside-Out |Inside-Out Generated Emotions |Inside-Out Generated Emotions + Debate| GPTSwarm | GPTSwarm random |
+|:---|:-------------|:-------------|:-------------|:-------------|:-------------|:-------------|
+| empathetic dialogues | gpt-4o-mini<br>gpt-4o | 0.41<br>0.551 |0.429<br>0.561|0.46<br>0.562 | -<br>- | -<br>- |
