@@ -82,6 +82,6 @@ The table above shows the performance comparison of different emotion recognitio
 
 
 **Table 3: Performance on Truncated Emotions Set (17 emotions)**
-|   |  | Inside-Out |Inside-Out Generated Emotions |Inside-Out Generated Emotions + Debate| Baseline (Single LLM call) | Baseline |
-|:---|:-------------|:-------------|:-------------|:-------------|:-------------|:-------------|
-| empathetic dialogues | gpt-4o-mini<br>gpt-4o | 0.41<br>0.551 |0.429<br>0.561|0.46<br>0.561 | 0.454<br>0.549 | -<br>- |
+|   |  | Inside-Out |Inside-Out Generated Emotions |Inside-Out Generated Emotions + Debate| Baseline (Single LLM call) |
+|:---|:-------------|:-------------|:-------------|:-------------|:-------------|
+| empathetic dialogues | gpt-4o-mini<br>gpt-4o | 0.41<br>0.551 |0.429<br>0.561|0.46<br>0.561 | 0.454<br>0.549 |
