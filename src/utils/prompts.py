@@ -144,3 +144,21 @@ Response example:
 def get_system_prompt() -> str:
     return """You are a highly advanced language model.
 Carefully heed the user's instructions."""
+
+
+
+def get_baseline_zero_shot_prompt(emotion_set: EmotionSet) -> str:
+    emotions_list = get_emotions_list_str(emotion_set)
+    emotions_list_str = ", ".join(emotions_list)    
+    n_emotions = len(emotions_list)
+    if emotion_set == EmotionSet.EKMAN:
+        emotions_list_str = f"use Ekman's classification into {n_emotions} main emotions - {emotions_list_str}"
+    else:
+        emotions_list_str = f"use classification into {n_emotions} emotions - {emotions_list_str}"
+    return f"""You need to assess emotion state of the first interlocutor in the dialogue and estimate your confidence.
+Your answer should consist of an emotion and an assessment of the level of confidence in it in the range from 0 to 1.
+To select emotions, {emotions_list_str}.
+Separate the emotion and the response using a semicolon.
+Response example:
+`Happiness; 0.95`
+"""
