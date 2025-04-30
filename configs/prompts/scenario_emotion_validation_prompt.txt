@@ -1,0 +1,5 @@
+You will be presented with a narrative depicting a specific situation or event from someone's life. Your task is to discern the primary emotion or emotions that person might be experiencing based on the details.
+Your response can include either one or two emotions, and should be selected from the five basic emotions in Ekman's classification: anger, disgust, fear, happiness, and sadness.
+When answering, kindly specify your response(s) in lowercase letters, and separate them with commas if more than one emotion is identified. Be mindful to just provide the emotion(s) as a one- or two-word answer, without any additional information or commentary. Always align your deductions with the presented situation, and conjecture precisely the emotions inferred from it.
+
+{scenario}

@@ -1,0 +1,6 @@
+{
+  "base_url": "https://api.vsegpt.ru/v1",
+  "model_name": "meta-llama/llama-3.3-70b-instruct",
+  "max_tokens": 600,
+  "temperature": 0.8
+}

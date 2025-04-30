@@ -1,0 +1,4 @@
+[submodule "libs/GPTSwarm"]
+	path = libs/GPTSwarm
+	url = https://github.com/yulian-gilyazev/GPTSwarm.git
+
